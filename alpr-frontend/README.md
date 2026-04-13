@@ -1,6 +1,6 @@
-# ALPR Parking System - Frontend MVP
+# ALPR Parking System - Frontend
 
-React + Vite frontend for the Automated License Plate Recognition parking system.
+React + Vite frontend for automated license plate recognition.
 
 ## Quick Start
 
@@ -13,33 +13,63 @@ Open `http://localhost:5173`
 
 ---
 
-## Components & Testing
-
-### ImageUpload
-**Test**: Click "Upload Image" tab
-- Drag/drop an image or click to select
-- Click "Upload & Analyze"
-- Should see mock result card
-
-### PermitDashboard
-**Test**: Click "Check Permit" tab
-- Enter vehicle ID: `ABC-1234`, `XYZ-5678`, or `DEF-9012`
-- Press Enter or click "Lookup"
-- Should see permit card with owner & status
-
-### EventLog (Coming Soon)
-
----
-
 ## Environment Variables
 
 Create `.env.local`:
 ```
 VITE_COGNITO_REGION=us-west-2
-VITE_COGNITO_USER_POOL_ID=us-west-2_xxxxx
-VITE_COGNITO_CLIENT_ID=xxxxxxxxxxxxx
+VITE_COGNITO_USER_POOL_ID=us-west-2_xxxxxxxxxxxxx
+VITE_COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxx
 VITE_API_ENDPOINT=http://localhost:3001
 ```
+
+---
+
+## Components
+
+### ImageUpload
+**Test**: Click "Upload Image" tab
+- Drag/drop an image or click to select
+- Image preview displays
+- Click "Upload & Analyze"
+- See mock result card (plate: ABC-1234, confidence: 98%, status: VALID)
+
+### PermitDashboard
+**Test**: Click "Check Permit" tab
+- Enter vehicle ID: `ABC-1234`, `XYZ-5678`, or `DEF-9012`
+- Press Enter or click "Lookup"
+- See permit card with owner name and status
+
+### EventLogStaff
+**Test**: Staff Dashboard → "Recent Events" tab
+- Shows table: Time, Vehicle ID, Plate, Permit Status, Event Type
+- NO Confidence column (staff can't see)
+- Type in filter box to search by vehicle ID or plate
+
+### EventLogAdmin
+**Test**: Admin Dashboard → Events table
+- Shows all columns INCLUDING Confidence (%)
+- "View Event" button in each row
+- Click "View Event" → Modal pops up with event details + image placeholder
+- Filter same as staff version
+
+### Login
+**Test**: Sign in/out flow
+- Test User: `newuser@example.com` / `Test123!@`
+- Admin User: `admin@example.com` / `Admin123!@`
+- Sign in → redirects to dashboard
+- Sign out → redirects to login
+
+### Dashboard (Staff)
+**Test**: `/dashboard`
+- 3 tabs: Upload Image, Check Permit, Recent Events
+- No "Admin" badge in header
+
+### Admin
+**Test**: `/admin`
+- Shows "Admin" badge in header
+- Advanced event table with confidence + View Event button
+- Try accessing `/admin` as non-admin → redirects to dashboard
 
 ---
 
@@ -50,21 +80,43 @@ src/
 ├── components/
 │   ├── ImageUpload.jsx
 │   ├── PermitDashboard.jsx
-│   └── EventLog.jsx (coming soon)
+│   ├── EventLogStaff.jsx
+│   ├── EventLogAdmin.jsx
+│   └── ProtectedRoute.jsx
+├── pages/
+│   ├── Login.jsx
+│   ├── Dashboard.jsx
+│   └── Admin.jsx
 ├── services/
 │   ├── auth.js
 │   └── api.js
 ├── styles/
-│   ├── App.css
-│   ├── ImageUpload.css
-│   └── PermitDashboard.css
+│   └── [CSS files]
 └── App.jsx
 ```
 
 ---
 
-## Next Steps
+## Test Users
 
-- Build EventLog component
-- Build Login page
-- Add routing
+```
+Staff:   newuser@example.com / Test123!@
+Admin:   admin@example.com / Admin123!@
+```
+
+---
+
+## Mock Data
+
+**Permit Status**:
+- `ABC-1234` → VALID
+- `XYZ-5678` → EXPIRED
+- `DEF-9012` → VALID
+
+**Events**: 4 mock events auto-generated
+
+---
+
+## Next Phase
+
+Phase 3 will replace mock API calls in `src/services/api.js` with real Lambda functions.
