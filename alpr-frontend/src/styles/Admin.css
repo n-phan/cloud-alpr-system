@@ -1,0 +1,18 @@
+.admin-container {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.admin-container h2 {
+  margin-top: 0;
+  color: #333;
+  margin-bottom: 0.5rem;
+}
+
+.admin-subtitle {
+  color: #666;
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
+}

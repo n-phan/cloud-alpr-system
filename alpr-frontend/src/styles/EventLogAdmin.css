@@ -1,0 +1,247 @@
+.event-log-container {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.event-log-container h2 {
+  margin-top: 0;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.filter-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin: 1rem 0;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.events-table-wrapper {
+  overflow-x: auto;
+  margin: 2rem 0;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  -webkit-overflow-scrolling: touch;
+}
+
+.events-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.events-table thead {
+  background: #f5f5f5;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.events-table th {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 2px solid #ddd;
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  min-width: fit-content;
+}
+
+.events-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  color: #333;
+}
+
+.events-table tbody tr:hover {
+  background: #f9f9f9;
+}
+
+.events-table tbody tr.status-valid {
+  background: #fafff5;
+}
+
+.events-table tbody tr.status-expired {
+  background: #fffaf5;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.status-badge.valid {
+  background: #d4f4dd;
+  color: #00aa00;
+}
+
+.status-badge.expired {
+  background: #fad7d4;
+  color: #cc0000;
+}
+
+.status-badge.revoked {
+  background: #fad7d4;
+  color: #cc0000;
+}
+
+.no-events {
+  text-align: center;
+  color: #999;
+  font-style: italic;
+  padding: 2rem !important;
+}
+
+.event-count {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.error-message {
+  background: #fee;
+  color: #c00;
+  padding: 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+  border-left: 4px solid #c00;
+}
+
+.view-button {
+  background: #0066cc;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: bold;
+  transition: background 0.3s;
+  white-space: nowrap;
+}
+
+.view-button:hover {
+  background: #004fa3;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #ddd;
+  background: #f9f9f9;
+  position: sticky;
+  top: 0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.25rem;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #999;
+  transition: color 0.3s;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.close-button:hover {
+  color: #333;
+}
+
+.modal-body {
+  padding: 2rem;
+}
+
+.event-detail-item {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid #f0f0f0;
+  align-items: flex-start;
+}
+
+.event-detail-item:last-child {
+  border-bottom: none;
+}
+
+.event-detail-item strong {
+  color: #333;
+  font-weight: 600;
+}
+
+.event-detail-item span {
+  color: #666;
+  word-break: break-word;
+}
+
+.image-placeholder {
+  background: #f0f0f0;
+  border: 2px dashed #ddd;
+  border-radius: 4px;
+  padding: 3rem 2rem;
+  text-align: center;
+  color: #999;
+  margin-top: 1rem;
+  font-size: 0.95rem;
+}
