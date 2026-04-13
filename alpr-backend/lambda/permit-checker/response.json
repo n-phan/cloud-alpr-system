@@ -1,0 +1,1 @@
+{"statusCode": 200, "body": "{\"vehicleId\": \"ABC-1234\", \"owner\": \"John Doe\", \"permitStatus\": \"VALID\", \"expiryDate\": \"2025-12-31\"}", "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}}

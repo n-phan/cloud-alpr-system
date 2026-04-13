@@ -1,0 +1,9 @@
+{
+  "body": {
+    "vehicleId": "ABC-1234",
+    "plateText": "ABC-1234",
+    "confidence": 0.95,
+    "permitStatus": "VALID",
+    "eventType": "ENTRY"
+  }
+}
