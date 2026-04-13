@@ -65,4 +65,17 @@ export const submitPlateResult = async (result) => {
   }
 };
 
+export const uploadImageToS3 = async (base64Image, fileName) => {
+  try {
+    const response = await api.post('/upload-image', {
+      imageBase64: base64Image,
+      fileName: fileName
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    throw error;
+  }
+};
+
 export default api;

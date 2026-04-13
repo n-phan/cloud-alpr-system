@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" aria-labelledby="title desc" role="img">
+  <title id="title">Simple Cat Illustration</title>
+  <desc id="desc">A minimal line drawing of a friendly cat sitting with a curled tail.</desc>
+
+  <!-- Style (feel free to tweak) -->
+  <g stroke="#222" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Tail -->
+    <path d="M175 165
+             q 28 0 28 22
+             q 0 22-28 12" />
+
+    <!-- Body -->
+    <ellipse cx="120" cy="165" rx="55" ry="35" />
+
+    <!-- Paws -->
+    <line x1="95" y1="198" x2="95" y2="208" />
+    <line x1="145" y1="198" x2="145" y2="208" />
+    <line x1="50" y1="140" x2="70" y2="150" />
+    <line x1="170" y1="150" x2="190" y2="140" />
+
+    <!-- Head -->
+    <circle cx="120" cy="90" r="40" />
+
+    <!-- Ears (bases lie on the head circle) -->
+    <polygon points="106,52 94,59 90,32" />
+    <polygon points="134,52 146,59 150,32" />
+
+    <!-- Whiskers -->
+    <line x1="62" y1="92" x2="92" y2="92" />
+    <line x1="62" y1="100" x2="92" y2="97" />
+    <line x1="148" y1="92" x2="178" y2="92" />
+    <line x1="148" y1="97" x2="178" y2="100" />
+
+    <!-- Mouth -->
+    <path d="M120 110 q -6 6 -12 0" />
+    <path d="M120 110 q 6 6 12 0" />
+  </g>
+
+  <!-- Filled facial features on top -->
+  <g fill="#222" stroke="none">
+    <!-- Eyes -->
+    <circle cx="105" cy="90" r="4" />
+    <circle cx="135" cy="90" r="4" />
+    <!-- Nose -->
+    <polygon points="120,98 115,104 125,104" />
+  </g>
+</svg>

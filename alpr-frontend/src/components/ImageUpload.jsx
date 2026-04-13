@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getPresignedUrl, submitPlateResult } from '../services/api';
+import { getPresignedUrl, getPermitStatus, submitPlateResult, uploadImageToS3 } from '../services/api';
 import '../styles/ImageUpload.css';
 
 export default function ImageUpload({ onResultReceived }) {
@@ -8,6 +8,34 @@ export default function ImageUpload({ onResultReceived }) {
   const [previewUrl, setPreviewUrl] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+
+  /**
+   * Mock plate recognition
+   * Simulates YOLO + OCR without real ML model
+   * In Phase 6, replace this with real ECS inference service
+   */
+  const mockRecognizeImage = async (imageUrl) => {
+    // Simulate inference delay (real YOLO takes 2-5 seconds)
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Mock plates database - ONLY vehicles that exist in DynamoDB Permits table
+    const mockPlates = [
+      { plate: 'ABC-1234', confidence: 0.98 },
+      { plate: 'XYZ-5678', confidence: 0.95 },
+      { plate: 'DEF-9012', confidence: 0.92 },
+    ];
+
+    // Randomly select a plate from mock database
+    const detected = mockPlates[Math.floor(Math.random() * mockPlates.length)];
+
+    return {
+      plateText: detected.plate,
+      confidence: detected.confidence,
+      imageUrl: imageUrl,
+      timestamp: Date.now(),
+      model: 'mock-yolo-v8'
+    };
+  };
 
   /**
    * Handle file selection
@@ -68,6 +96,7 @@ export default function ImageUpload({ onResultReceived }) {
 
   /**
    * Upload file and submit result
+   * Phase 4: Mock recognition flow (backend submission skipped temporarily)
    */
   const handleUpload = async () => {
     if (!selectedFile) {
@@ -79,36 +108,70 @@ export default function ImageUpload({ onResultReceived }) {
     setError(null);
 
     try {
-      // Step 1: Get pre-signed URL
-      console.log('Getting pre-signed URL...');
-      const { uploadUrl } = await getPresignedUrl();
+      // Step 1: Convert file to base64
+      console.log('Step 1: Converting image to base64...');
+      const reader = new FileReader();
+      
+      const base64Promise = new Promise((resolve, reject) => {
+        reader.onload = () => {
+          const base64String = reader.result.split(',')[1];
+          resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(selectedFile);
+      });
+      
+      const base64Image = await base64Promise;
+      console.log('✓ Image converted to base64');
 
-      // Step 2: Upload to S3 (or mock)
-      console.log('Uploading to S3...');
-      // For MVP, we'll mock this. In Phase 3, you'll actually upload to S3.
+      // Step 2: Upload file to S3 via Lambda
+      console.log('Step 2: Uploading image to S3 via Lambda...');
+      const s3Result = await uploadImageToS3(base64Image, selectedFile.name);
+      const imageUrl = s3Result.imageUrl;
+      console.log('✓ Image uploaded to S3:', imageUrl);
 
-      // Step 3: Mock plate recognition result
-      // In Phase 6B, this will call the real ECS inference API
-      const mockResult = {
-        vehicleId: 'ABC-1234',
-        plateText: 'ABC-1234',
-        confidence: 0.98,
-        permitStatus: 'VALID',
-        eventType: 'ENTRY'
-      };
+      // Step 3: Mock plate recognition
+      console.log('Step 3: Running mock plate recognition (2 second simulation)...');
+      const recognitionResult = await mockRecognizeImage(imageUrl);
+      console.log('✓ Mock recognition result:', recognitionResult);
 
-      // Step 4: Submit result to backend
-      console.log('Submitting result...');
-      await submitPlateResult(mockResult);
+      // Step 4: Check permit status for detected plate
+      console.log('Step 4: Checking permit status for', recognitionResult.plateText);
+      const permitData = await getPermitStatus(recognitionResult.plateText);
+      console.log('✓ Permit check result:', permitData);
 
-      setResult(mockResult);
+      // Step 5: Display result to user
+      console.log('Step 5: Displaying recognition result...');
+      setResult({
+        vehicleId: recognitionResult.plateText,
+        plateText: recognitionResult.plateText,
+        confidence: recognitionResult.confidence,
+        permitStatus: permitData.permitStatus,
+        eventType: 'ENTRY',
+        owner: permitData.owner,
+        expiryDate: permitData.expiryDate,
+        imageUrl: imageUrl
+      });
+
       if (onResultReceived) {
-        onResultReceived(mockResult);
+        onResultReceived({
+          vehicleId: recognitionResult.plateText,
+          plateText: recognitionResult.plateText,
+          confidence: recognitionResult.confidence,
+          permitStatus: permitData.permitStatus,
+          eventType: 'ENTRY',
+          imageUrl: imageUrl
+        });
       }
 
-      // Clear form
-      setSelectedFile(null);
-      setPreviewUrl(null);
+      console.log('✓ Phase 4 complete - Full flow working!');
+
+      // Clear form after successful submission
+      setTimeout(() => {
+        setSelectedFile(null);
+        setPreviewUrl(null);
+      }, 2000);
+
     } catch (err) {
       console.error('Upload error:', err);
       setError(err.message || 'Upload failed. Please try again.');
@@ -161,17 +224,22 @@ export default function ImageUpload({ onResultReceived }) {
         disabled={!selectedFile || uploading}
         className="upload-button"
       >
-        {uploading ? 'Uploading...' : 'Upload & Analyze'}
+        {uploading ? 'Uploading & Analyzing...' : 'Upload & Analyze'}
       </button>
 
       {/* Result */}
       {result && (
         <div className="result-card">
           <h3>Recognition Result</h3>
+          <p><strong>Owner:</strong> {result.owner}</p>
           <p><strong>Plate Text:</strong> {result.plateText}</p>
           <p><strong>Confidence:</strong> {(result.confidence * 100).toFixed(2)}%</p>
-          <p><strong>Permit Status:</strong> {result.permitStatus}</p>
+          <p><strong>Permit Status:</strong> <span className={result.permitStatus === 'VALID' ? 'status-valid' : 'status-invalid'}>{result.permitStatus}</span></p>
+          <p><strong>Expiry Date:</strong> {result.expiryDate}</p>
           <p><strong>Event Type:</strong> {result.eventType}</p>
+          <p style={{ fontSize: '0.85em', color: '#666', marginTop: '10px' }}>
+            <em>Mock Recognition (Phase 4) - Will use real YOLO model in Phase 6</em>
+          </p>
         </div>
       )}
     </div>
