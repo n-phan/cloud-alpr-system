@@ -164,7 +164,7 @@ export default function ImageUpload({ onResultReceived }) {
         });
       }
 
-      console.log('✓ Phase 4 complete - Full flow working!');
+      console.log('✓ Phase 4 complete - Full end-to-end flow working!');
 
       // Clear form after successful submission
       setTimeout(() => {
