@@ -1,0 +1,26 @@
+{
+  "Records": [
+    {
+      "eventName": "INSERT",
+      "dynamodb": {
+        "NewImage": {
+          "vehicle_id": { "S": "LOW-TEST-001" },
+          "plate_text": { "S": "LOW-TEST-001" },
+          "confidence": { "N": "0.40" },
+          "event_type": { "S": "entry" }
+        }
+      }
+    },
+    {
+      "eventName": "INSERT",
+      "dynamodb": {
+        "NewImage": {
+          "vehicle_id": { "S": "HIGH-TEST-001" },
+          "plate_text": { "S": "HIGH-TEST-001" },
+          "confidence": { "N": "0.95" },
+          "event_type": { "S": "entry" }
+        }
+      }
+    }
+  ]
+}

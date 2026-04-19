@@ -1,0 +1,10 @@
+{
+  "httpMethod": "POST",
+  "body": {
+    "vehicleId": "CIT-TEST-001",
+    "plateText": "CIT-TEST-001",
+    "reason": "No valid permit",
+    "amount": 120,
+    "issuedBy": "admin-user"
+  }
+}

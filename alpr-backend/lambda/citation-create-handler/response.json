@@ -1,0 +1,8 @@
+{
+  "statusCode": 201,
+  "body": "{\"message\": \"Citation created\", \"citationId\": \"<uuid>\", \"issuedAt\": 1700000000000}",
+  "headers": {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*"
+  }
+}

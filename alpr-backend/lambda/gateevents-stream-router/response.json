@@ -1,0 +1,7 @@
+{
+  "statusCode": 200,
+  "processed": 2,
+  "routedToPermitChecker": 1,
+  "routedToValidationBacklog": 1,
+  "threshold": 0.85
+}

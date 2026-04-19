@@ -1,0 +1,9 @@
+{
+  "body": {
+    "vehicleId": "TEST-LOW-001",
+    "plateText": "TEST-LOW-001",
+    "confidence": 0.45,
+    "permitStatus": "UNKNOWN",
+    "eventType": "ENTRY"
+  }
+}

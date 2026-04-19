@@ -1,0 +1,9 @@
+{
+  "httpMethod": "PUT",
+  "body": {
+    "backlogId": "REPLACE-WITH-BACKLOG-ID",
+    "status": "approved",
+    "reviewedBy": "admin-user",
+    "notes": "Validated by admin"
+  }
+}
