@@ -1,0 +1,8 @@
+{
+  "statusCode": 200,
+  "body": "{\"message\": \"Review updated\", \"item\": {\"backlog_id\": \"REPLACE-WITH-BACKLOG-ID\", \"status\": \"approved\"}}",
+  "headers": {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*"
+  }
+}

@@ -126,6 +126,145 @@ cat response.json
 
 ---
 
+### Function 5: validation-backlog-handler (Low Confidence)
+
+```bash
+cat > payload.json << 'EOF'
+{
+  "body": {
+    "vehicleId": "LOW-TEST-001",
+    "plateText": "LOW-TEST-001",
+    "confidence": 0.45,
+    "permitStatus": "UNKNOWN",
+    "eventType": "ENTRY"
+  }
+}
+EOF
+
+aws lambda invoke \
+  --function-name validation-backlog-handler \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://payload.json \
+  --region us-west-2 \
+  response.json
+
+cat response.json
+```
+
+**Expected**:
+- `statusCode`: 201
+- `message`: "Low-confidence result queued for review"
+- `backlogId`: UUID
+
+---
+
+### Function 6: validation-backlog-admin-handler (List Reviews)
+
+```bash
+cat > payload.json << 'EOF'
+{"httpMethod":"GET","queryStringParameters":{"limit":"5"}}
+EOF
+
+aws lambda invoke \
+  --function-name validation-backlog-admin-handler \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://payload.json \
+  --region us-west-2 \
+  response.json
+
+cat response.json
+```
+
+**Expected**:
+- `statusCode`: 200
+- `items`: Array of backlog items
+- `count`: Number of returned items
+
+---
+
+### Function 7: gateevents-stream-router
+
+```bash
+cat > payload.json << 'EOF'
+{
+  "Records": [
+    {
+      "eventName": "INSERT",
+      "dynamodb": {
+        "NewImage": {
+          "vehicle_id": { "S": "LOW-TEST-STREAM" },
+          "plate_text": { "S": "LOW-TEST-STREAM" },
+          "confidence": { "N": "0.40" },
+          "event_type": { "S": "entry" }
+        }
+      }
+    },
+    {
+      "eventName": "INSERT",
+      "dynamodb": {
+        "NewImage": {
+          "vehicle_id": { "S": "HIGH-TEST-STREAM" },
+          "plate_text": { "S": "HIGH-TEST-STREAM" },
+          "confidence": { "N": "0.95" },
+          "event_type": { "S": "entry" }
+        }
+      }
+    }
+  ]
+}
+EOF
+
+aws lambda invoke \
+  --function-name gateevents-stream-router \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://payload.json \
+  --region us-west-2 \
+  response.json
+
+cat response.json
+```
+
+**Expected**:
+- `statusCode`: 200
+- `processed`: 2
+- `routedToPermitChecker`: 1
+- `routedToValidationBacklog`: 1
+
+---
+
+### Function 8: citation-create-handler
+
+```bash
+cat > payload.json << 'EOF'
+{
+  "httpMethod": "POST",
+  "body": {
+    "vehicleId": "CIT-TEST-001",
+    "plateText": "CIT-TEST-001",
+    "reason": "No valid permit",
+    "amount": 120,
+    "issuedBy": "admin-user"
+  }
+}
+EOF
+
+aws lambda invoke \
+  --function-name citation-create-handler \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://payload.json \
+  --region us-west-2 \
+  response.json
+
+cat response.json
+```
+
+**Expected**:
+- `statusCode`: 201
+- `message`: "Citation created"
+- `citationId`: UUID
+
+---
+
 ## Verify All Functions Deployed
 
 ```bash
@@ -140,6 +279,10 @@ You should see:
 - permit-checker
 - event-retriever
 - plate-submission-handler
+- validation-backlog-handler
+- validation-backlog-admin-handler
+- gateevents-stream-router
+- citation-create-handler
 
 ---
 
@@ -150,7 +293,11 @@ You should see:
 - [ ] permit-checker returns 404 for INVALID-9999
 - [ ] event-retriever returns 200 with event array
 - [ ] plate-submission-handler returns 201
-- [ ] All 4 functions appear in list-functions
+- [ ] validation-backlog-handler returns 201 for low confidence
+- [ ] validation-backlog-admin-handler GET returns 200 with items
+- [ ] gateevents-stream-router routes records by confidence threshold
+- [ ] citation-create-handler returns 201 with citationId
+- [ ] All 8 functions appear in list-functions
 
 ---
 

@@ -1,0 +1,8 @@
+{
+  "statusCode": 201,
+  "body": "{\"message\": \"Low-confidence result queued for review\", \"backlogId\": \"<uuid>\", \"confidence\": 0.45, \"threshold\": 0.85}",
+  "headers": {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*"
+  }
+}
