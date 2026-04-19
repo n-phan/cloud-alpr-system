@@ -11,7 +11,7 @@ TABLE_NAME = os.environ.get("VALIDATION_BACKLOG_TABLE", "ValidationBacklog")
 
 
 def _threshold() -> float:
-    raw = os.environ.get("CONFIDENCE_THRESHOLD", "0.85")
+    raw = os.environ.get("CONFIDENCE_THRESHOLD", "0.7")
     return float(raw)
 
 

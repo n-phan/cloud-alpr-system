@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import boto3
 
-THRESHOLD = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.85"))
+THRESHOLD = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.7"))
 PERMIT_CHECKER_FUNCTION = os.environ.get("PERMIT_CHECKER_FUNCTION", "permit-checker")
 VALIDATION_BACKLOG_FUNCTION = os.environ.get(
     "VALIDATION_BACKLOG_FUNCTION", "validation-backlog-handler"
