@@ -33,18 +33,18 @@ def lambda_handler(event, context):
         
         # Generate S3 key
         timestamp = datetime.now().isoformat().replace(':', '-')
-        key = f"uploads/{timestamp}_{file_name}"
+        key = f"{timestamp}_{file_name}"
         
         # Upload to S3
         s3_client.put_object(
-            Bucket='alpr-raw-data-cmpe281',
+            Bucket='alpr-ingress-cmpe281',
             Key=key,
             Body=image_bytes,
             ContentType='image/jpeg'
         )
-        
+
         # Generate S3 URL
-        image_url = f"https://alpr-raw-data-cmpe281.s3.amazonaws.com/{key}"
+        image_url = f"https://alpr-ingress-cmpe281.s3.amazonaws.com/{key}"
         
         return {
             'statusCode': 200,
