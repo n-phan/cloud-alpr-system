@@ -259,8 +259,6 @@ python main.py
 * Add FastAPI dashboard for results
 * Store images with bounding boxes annotated
 * Add Redis cache for duplicate plates
-* Integrate alerting (Discord or email webhook)
-* Switch to async processing pipeline
 
 ---
 
