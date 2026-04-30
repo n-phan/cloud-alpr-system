@@ -91,7 +91,7 @@ model.train(
 
 ---
 
-## 🔍 Inference
+##  Inference
 
 model = YOLO("best.pt")
 
@@ -121,7 +121,7 @@ result = reader.readtext(image)
 
 ---
 
-## 📦 Output Format
+##  Output Format
 
 {
   "status": "OK",
