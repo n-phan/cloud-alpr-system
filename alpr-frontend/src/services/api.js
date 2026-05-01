@@ -78,4 +78,16 @@ export const uploadImageToS3 = async (base64Image, fileName) => {
   }
 };
 
+export const getCitationsByPlate = async (plateText) => {
+  try {
+    const response = await api.get('/get-citations', {
+      params: { plateText }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error retrieving citations:', error);
+    throw error;
+  }
+};
+
 export default api;

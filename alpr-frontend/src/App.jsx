@@ -4,6 +4,7 @@ import { getAuthenticatedUser, handleSignOut, isUserAdmin } from './services/aut
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Admin from './pages/Admin';
+import Citations from './pages/Citations';
 import ProtectedRoute from './components/ProtectedRoute';
 import './styles/App.css';
 
@@ -68,6 +69,7 @@ function App() {
       <main className={user ? 'app-content' : ''}>
         <Routes>
           <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login onLoginSuccess={checkAuth} />} />
+          <Route path="/citations" element={<Citations />} />
           <Route
             path="/dashboard"
             element={
