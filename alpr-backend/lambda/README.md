@@ -195,7 +195,8 @@ cat > payload.json << 'EOF'
           "vehicle_id": { "S": "LOW-TEST-STREAM" },
           "plate_text": { "S": "LOW-TEST-STREAM" },
           "confidence": { "N": "0.40" },
-          "event_type": { "S": "entry" }
+          "event_type": { "S": "entry" },
+          "timestamp": { "N": "1777672800001" }
         }
       }
     },
@@ -206,7 +207,8 @@ cat > payload.json << 'EOF'
           "vehicle_id": { "S": "HIGH-TEST-STREAM" },
           "plate_text": { "S": "HIGH-TEST-STREAM" },
           "confidence": { "N": "0.95" },
-          "event_type": { "S": "entry" }
+          "event_type": { "S": "entry" },
+          "timestamp": { "N": "1777672800002" }
         }
       }
     }
@@ -224,12 +226,14 @@ aws lambda invoke \
 cat response.json
 ```
 
-**Expected**:
+**Expected** (with default `ORPHAN_POLICY=review`, two stream records as above):
 - `statusCode`: 200
 - `processed`: 2
-- `routedToPermitChecker`: 1
-- `routedToValidationBacklog`: 1
-- `routedToCitationCreate`: 1 (when permit check is not valid)
+- `routedToValidationBacklog`: 1 (low-confidence record)
+- `waitingForCounterpart`: 1 (high-confidence entry alone; no matching exit yet)
+- `routedToPermitChecker` / `routedToCitationCreate`: depend on pairing, grace period, and permit outcome (see `lambda/gateevents-stream-router/response.json` for full counter list)
+
+`NewImage` must include `timestamp` (ms) along with `vehicle_id`, `plate_text`, `confidence`, and `event_type`, or the record is skipped (`skippedInvalidPayload`).
 
 ---
 
