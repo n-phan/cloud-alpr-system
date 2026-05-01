@@ -2,10 +2,10 @@ REGION     := us-west-2
 STACK_NAME := alpr-citations-stack
 LAMBDA_DIR := lambda
 
-# All functions that can be updated with zip + update-function-code.
-# This includes citation-lookup-handler — SAM only needs to run when template.yaml
-# changes (new routes, env vars, permissions). For code-only changes, make deploy works.
-EXISTING_FUNCTIONS := \
+# All functions are now managed by the SAM stack in template.yaml.
+# make deploy fn=<name>  — fast code-only update via update-function-code (skips CloudFormation)
+# make deploy-stack      — full SAM build + deploy (required for infrastructure changes)
+ALL_FUNCTIONS := \
   presigned-url-generator \
   permit-checker \
   event-retriever \
@@ -17,33 +17,31 @@ EXISTING_FUNCTIONS := \
   citation-lookup-handler \
   s3-uploader
 
-.PHONY: help build deploy deploy-stack deploy-all package test logs
+.PHONY: help build deploy-stack deploy deploy-all package test logs
 
 help:
 	@echo "Usage:"
-	@echo "  make build               sam build (SAM-managed functions)"
-	@echo "  make deploy-stack        sam build + deploy the SAM stack (first-time or updates)"
-	@echo "  make deploy fn=<name>    zip + update-function-code for an existing function"
-	@echo "  make deploy-all          redeploy all existing (non-SAM) functions"
+	@echo "  make deploy-stack        sam build + deploy — use for infrastructure changes"
+	@echo "                           (template.yaml edits: env vars, new routes, new functions)"
+	@echo "  make deploy fn=<name>    fast code-only update for a single function"
+	@echo "  make deploy-all          fast code-only update for all functions"
 	@echo "  make test fn=<name>      invoke a function with its test-payload.json"
 	@echo "  make logs fn=<name>      tail CloudWatch logs for a function"
 
-# ── SAM-managed stack ─────────────────────────────────────────────────────────
+# ── SAM stack (infrastructure + code) ────────────────────────────────────────
 
 build:
 	sam build --template template.yaml
 
-# --resolve-s3 lets SAM create and manage its own S3 bucket for artifacts.
-# On first run this prompts for stack name/region; answers are saved to samconfig.toml.
 deploy-stack: build
 	sam deploy \
 	  --stack-name $(STACK_NAME) \
 	  --region $(REGION) \
-	  --capabilities CAPABILITY_IAM \
+	  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
 	  --resolve-s3 \
 	  --no-fail-on-empty-changeset
 
-# ── Existing functions (zip + update-function-code) ───────────────────────────
+# ── Fast code-only updates (bypass CloudFormation) ───────────────────────────
 
 package:
 	@test -n "$(fn)" || (echo "ERROR: fn=<function-name> required" && exit 1)
@@ -56,7 +54,7 @@ package:
 	@echo "Created $(LAMBDA_DIR)/$(fn)/function.zip"
 
 deploy: package
-	@echo "Deploying $(fn) to Lambda..."
+	@echo "Deploying $(fn)..."
 	aws lambda update-function-code \
 	  --function-name $(fn) \
 	  --zip-file fileb://$(LAMBDA_DIR)/$(fn)/function.zip \
@@ -66,7 +64,7 @@ deploy: package
 	@echo "Done."
 
 deploy-all:
-	@for fn in $(EXISTING_FUNCTIONS); do \
+	@for fn in $(ALL_FUNCTIONS); do \
 	  echo ""; \
 	  echo "==> Deploying $$fn..."; \
 	  $(MAKE) deploy fn=$$fn; \

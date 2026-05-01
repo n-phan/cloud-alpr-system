@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  ALPR citation-lookup-handler Lambda and GET /get-citations API Gateway integration.
-  Existing Lambda functions (presigned-url-generator, permit-checker, etc.) were created
-  manually and are updated via `make deploy fn=<name>`. New functions are added here.
+  ALPR backend — all Lambda functions and the GET /get-citations API Gateway integration.
+  Functions originally created manually were imported into this stack via CloudFormation
+  resource import so that all infrastructure is now managed as IaC.
 
 Parameters:
   ExistingApiId:
@@ -24,21 +24,126 @@ Globals:
 
 Resources:
 
-  # ── Lambda ──────────────────────────────────────────────────────────────────
+  # ── Lambda functions ─────────────────────────────────────────────────────────
+  # DeletionPolicy: Retain on all functions prevents accidental deletion
+  # if the CloudFormation stack is ever torn down.
+
+  PresignedUrlGeneratorFunction:
+    Type: AWS::Serverless::Function
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: presigned-url-generator
+      CodeUri: lambda/presigned-url-generator/
+      Handler: handler.lambda_handler
+      Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: alpr-images-bucket
+
+  PermitCheckerFunction:
+    Type: AWS::Serverless::Function
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: permit-checker
+      CodeUri: lambda/permit-checker/
+      Handler: handler.lambda_handler
+      Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
+
+  EventRetrieverFunction:
+    Type: AWS::Serverless::Function
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: event-retriever
+      CodeUri: lambda/event-retriever/
+      Handler: handler.lambda_handler
+      Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
+
+  PlateSubmissionHandlerFunction:
+    Type: AWS::Serverless::Function
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: plate-submission-handler
+      CodeUri: lambda/plate-submission-handler/
+      Handler: handler.lambda_handler
+      Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
+
+  ValidationBacklogHandlerFunction:
+    Type: AWS::Serverless::Function
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: validation-backlog-handler
+      CodeUri: lambda/validation-backlog-handler/
+      Handler: handler.lambda_handler
+      Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
+      Environment:
+        Variables:
+          CONFIDENCE_THRESHOLD: "0.7"
+          VALIDATION_BACKLOG_TABLE: ValidationBacklog
+
+  ValidationBacklogAdminHandlerFunction:
+    Type: AWS::Serverless::Function
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: validation-backlog-admin-handler
+      CodeUri: lambda/validation-backlog-admin-handler/
+      Handler: handler.lambda_handler
+      Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
+      Environment:
+        Variables:
+          VALIDATION_BACKLOG_TABLE: ValidationBacklog
+          LIST_DEFAULT_LIMIT: "50"
+          LIST_MAX_LIMIT: "100"
+
+  GateEventsStreamRouterFunction:
+    Type: AWS::Serverless::Function
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: gateevents-stream-router
+      CodeUri: lambda/gateevents-stream-router/
+      Handler: handler.lambda_handler
+      Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
+      Environment:
+        Variables:
+          CONFIDENCE_THRESHOLD: "0.7"
+          PERMIT_CHECKER_FUNCTION: permit-checker
+          VALIDATION_BACKLOG_FUNCTION: validation-backlog-handler
+
+  CitationCreateHandlerFunction:
+    Type: AWS::Serverless::Function
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: citation-create-handler
+      CodeUri: lambda/citation-create-handler/
+      Handler: handler.lambda_handler
+      Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
+      Environment:
+        Variables:
+          CITATIONS_TABLE: Citations
+
+  S3UploaderFunction:
+    Type: AWS::Serverless::Function
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: s3-uploader
+      CodeUri: lambda/s3-uploader/
+      Handler: handler.lambda_handler
+      Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
 
   CitationLookupFunction:
     Type: AWS::Serverless::Function
+    DeletionPolicy: Retain
     Properties:
       FunctionName: citation-lookup-handler
       CodeUri: lambda/citation-lookup-handler/
       Handler: handler.lambda_handler
-      # Reuse the same execution role as all manually-created functions
       Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
       Environment:
         Variables:
           CITATIONS_TABLE: Citations
 
   # ── API Gateway: GET /get-citations ─────────────────────────────────────────
+  # Only this route is managed here — existing routes were wired manually
+  # and continue to work independently.
 
   GetCitationsResource:
     Type: AWS::ApiGateway::Resource
@@ -86,7 +191,6 @@ Resources:
             method.response.header.Access-Control-Allow-Methods: true
             method.response.header.Access-Control-Allow-Origin: true
 
-  # Grant API Gateway permission to invoke the Lambda
   CitationLookupApiPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -95,7 +199,6 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingApiId}/*/GET/get-citations"
 
-  # Redeploy the existing API so the new route goes live on the prod stage
   ApiRedeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
