@@ -1,0 +1,300 @@
+.validation-backlog-container {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Header ── */
+
+.backlog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.backlog-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.refresh-btn {
+  background: none;
+  border: 1px solid #0066cc;
+  color: #0066cc;
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background 0.2s, color 0.2s;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: #0066cc;
+  color: white;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Status filter tabs ── */
+
+.backlog-filters {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.filter-btn {
+  background: none;
+  border: 1px solid #ddd;
+  color: #666;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  border-color: #0066cc;
+  color: #0066cc;
+}
+
+.filter-btn.active {
+  background: #0066cc;
+  border-color: #0066cc;
+  color: white;
+  font-weight: 600;
+}
+
+/* ── Empty + error states ── */
+
+.backlog-empty {
+  text-align: center;
+  color: #999;
+  padding: 3rem 0;
+  font-style: italic;
+}
+
+.error-message {
+  background: #fee;
+  color: #c00;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #c00;
+}
+
+/* ── Card list ── */
+
+.backlog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.backlog-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fafafa;
+  position: relative;
+}
+
+.backlog-card.status-pending_review { border-left: 4px solid #f59e0b; }
+.backlog-card.status-approved       { border-left: 4px solid #1a7f4b; }
+.backlog-card.status-rejected       { border-left: 4px solid #c00; }
+
+.backlog-card-main {
+  display: flex;
+  gap: 1.25rem;
+  padding: 1.25rem;
+}
+
+/* ── Image ── */
+
+.backlog-image {
+  width: 160px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: #eee;
+}
+
+.backlog-image-placeholder {
+  width: 160px;
+  height: 110px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: #f0f0f0;
+  border: 2px dashed #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: #aaa;
+}
+
+/* ── Details ── */
+
+.backlog-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.backlog-plate {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #111;
+  letter-spacing: 0.08em;
+}
+
+.backlog-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.meta-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #aaa;
+  margin-right: 0.25rem;
+}
+
+/* ── Confidence bar ── */
+
+.backlog-confidence {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.confidence-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.confidence-bar-track {
+  width: 120px;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.confidence-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.confidence-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #444;
+  min-width: 2.5rem;
+}
+
+/* ── Notes (reviewed items) ── */
+
+.backlog-notes-display {
+  font-size: 0.85rem;
+  color: #555;
+  margin: 0;
+}
+
+/* ── Action area ── */
+
+.backlog-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.backlog-notes-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  resize: vertical;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.backlog-notes-input:focus {
+  outline: none;
+  border-color: #0066cc;
+}
+
+.backlog-action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  padding: 0.45rem 1.25rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn.approve {
+  background: #1a7f4b;
+  color: white;
+}
+
+.action-btn.approve:hover:not(:disabled) {
+  background: #15643c;
+}
+
+.action-btn.reject {
+  background: #c00;
+  color: white;
+}
+
+.action-btn.reject:hover:not(:disabled) {
+  background: #a00;
+}
+
+/* ── Status badge ── */
+
+.backlog-status-badge {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+}
+
+.backlog-status-badge.pending_review { background: #fef3c7; color: #92400e; }
+.backlog-status-badge.approved       { background: #d1e7dd; color: #0a5132; }
+.backlog-status-badge.rejected       { background: #fee;    color: #c00; }

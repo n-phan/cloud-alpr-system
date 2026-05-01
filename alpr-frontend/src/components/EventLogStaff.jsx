@@ -7,6 +7,7 @@ export default function EventLogStaff() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   useEffect(() => {
     fetchEvents();
@@ -66,6 +67,9 @@ export default function EventLogStaff() {
     return new Date(typeof timestamp === 'string' ? timestamp : timestamp * 1000).toLocaleString();
   };
 
+  const handleViewEvent = (event) => setSelectedEvent(event);
+  const handleCloseModal = () => setSelectedEvent(null);
+
   if (loading && events.length === 0) {
     return <div className="loading">Loading events...</div>;
   }
@@ -93,6 +97,7 @@ export default function EventLogStaff() {
               <th>Plate Text</th>
               <th>Permit Status</th>
               <th>Event Type</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -108,11 +113,16 @@ export default function EventLogStaff() {
                     </span>
                   </td>
                   <td>{event.eventType}</td>
+                  <td>
+                    <button onClick={() => handleViewEvent(event)} className="view-button">
+                      View Event
+                    </button>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="5" className="no-events">No events found</td>
+                <td colSpan="6" className="no-events">No events found</td>
               </tr>
             )}
           </tbody>
@@ -120,6 +130,47 @@ export default function EventLogStaff() {
       </div>
 
       <p className="event-count">Total events: {filteredEvents.length}</p>
+
+      {selectedEvent && (
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Event Details</h3>
+              <button className="close-button" onClick={handleCloseModal}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="event-detail-item">
+                <strong>Time:</strong>
+                <span>{formatTime(selectedEvent.timestamp)}</span>
+              </div>
+              <div className="event-detail-item">
+                <strong>Vehicle ID:</strong>
+                <span>{selectedEvent.vehicleId}</span>
+              </div>
+              <div className="event-detail-item">
+                <strong>Plate Text:</strong>
+                <span>{selectedEvent.plateText}</span>
+              </div>
+              <div className="event-detail-item">
+                <strong>Permit Status:</strong>
+                <span className={`status-badge ${selectedEvent.permitStatus.toLowerCase()}`}>
+                  {selectedEvent.permitStatus}
+                </span>
+              </div>
+              <div className="event-detail-item">
+                <strong>Event Type:</strong>
+                <span>{selectedEvent.eventType}</span>
+              </div>
+              <div className="event-detail-item">
+                <strong>Captured Image:</strong>
+                <div className="image-placeholder">
+                  [License plate image would display here in Phase 6]
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
