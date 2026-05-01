@@ -53,8 +53,9 @@ def lambda_handler(event, context):
         new_image = (record.get("dynamodb") or {}).get("NewImage") or {}
         item = _from_ddb_image(new_image)
 
-        vehicle_id = item.get("vehicle_id")
-        plate_text = item.get("plate_text")
+        plate_raw = item.get("plate_text")
+        plate_text = _normalize_plate(plate_raw)
+        stored_vehicle_key = _coerce_ddb_vehicle_key(item.get("vehicle_id"))
         confidence = _to_float(item.get("confidence"))
         permit_status_in_event = item.get("permit_status")
         event_type_raw = item.get("event_type")
@@ -63,7 +64,16 @@ def lambda_handler(event, context):
         event_kind = _event_kind(event_type_raw)
         event_direction = event_kind if event_kind in {"entry", "exit"} else None
 
-        if not vehicle_id or not plate_text or confidence is None or event_ts is None:
+        # Permit/citation/pairing use normalized plate; DynamoDB Keys still use writers' vehicle_id when set.
+        ddb_vehicle_id = stored_vehicle_key if stored_vehicle_key else plate_text
+        vehicle_id = plate_text
+
+        if (
+            plate_text is None
+            or ddb_vehicle_id is None
+            or confidence is None
+            or event_ts is None
+        ):
             print(f"Skipping record with missing/invalid fields: {item}")
             skipped_invalid_payload += 1
             continue
@@ -84,7 +94,7 @@ def lambda_handler(event, context):
             )
             routed_to_validation_backlog += 1
             _record_decision(
-                vehicle_id=vehicle_id,
+                ddb_vehicle_id=ddb_vehicle_id,
                 timestamp=event_ts,
                 decision_reason="low-confidence-review",
                 decision_lane="low-confidence-review",
@@ -107,7 +117,7 @@ def lambda_handler(event, context):
                 )
                 routed_to_validation_backlog += 1
                 _record_decision(
-                    vehicle_id=vehicle_id,
+                    ddb_vehicle_id=ddb_vehicle_id,
                     timestamp=event_ts,
                     decision_reason="detection-review-fallback",
                     decision_lane="high-confidence-detection",
@@ -123,7 +133,7 @@ def lambda_handler(event, context):
             if _has_valid_permit(permit_check_response):
                 no_citation_valid_permit += 1
                 _record_decision(
-                    vehicle_id=vehicle_id,
+                    ddb_vehicle_id=ddb_vehicle_id,
                     timestamp=event_ts,
                     decision_reason="valid-permit",
                     decision_lane="high-confidence-detection",
@@ -149,7 +159,7 @@ def lambda_handler(event, context):
             else:
                 routed_to_citation_create += 1
             _record_decision(
-                vehicle_id=vehicle_id,
+                ddb_vehicle_id=ddb_vehicle_id,
                 timestamp=event_ts,
                 decision_reason="invalid-permit-citation",
                 decision_lane="high-confidence-detection",
@@ -170,7 +180,7 @@ def lambda_handler(event, context):
             )
             routed_to_validation_backlog += 1
             _record_decision(
-                vehicle_id=vehicle_id,
+                ddb_vehicle_id=ddb_vehicle_id,
                 timestamp=event_ts,
                 decision_reason="unknown-event-type-review",
                 decision_lane="high-confidence-automated",
@@ -180,7 +190,7 @@ def lambda_handler(event, context):
         # Lane 2: High-confidence automated enforcement
         high_confidence_events += 1
         counterpart = _find_counterpart(
-            events=_vehicle_events(vehicle_id),
+            events=_vehicle_events_for_pairing(plate_text, plate_raw),
             current_ts=event_ts,
             current_direction=event_direction,
         )
@@ -191,7 +201,7 @@ def lambda_handler(event, context):
             if age_ms < _minutes_to_ms(MATCHING_WINDOW_MINUTES):
                 waiting_for_counterpart += 1
                 _record_decision(
-                    vehicle_id=vehicle_id,
+                    ddb_vehicle_id=ddb_vehicle_id,
                     timestamp=event_ts,
                     decision_reason="waiting-for-counterpart",
                     decision_lane="high-confidence-automated",
@@ -211,7 +221,7 @@ def lambda_handler(event, context):
                 )
                 routed_to_validation_backlog += 1
                 _record_decision(
-                    vehicle_id=vehicle_id,
+                    ddb_vehicle_id=ddb_vehicle_id,
                     timestamp=event_ts,
                     decision_reason="orphan-review",
                     decision_lane="high-confidence-automated",
@@ -236,7 +246,7 @@ def lambda_handler(event, context):
             else:
                 routed_to_citation_create += 1
             _record_decision(
-                vehicle_id=vehicle_id,
+                ddb_vehicle_id=ddb_vehicle_id,
                 timestamp=event_ts,
                 decision_reason="orphan-citation",
                 decision_lane="high-confidence-automated",
@@ -248,7 +258,7 @@ def lambda_handler(event, context):
         if duration_ms <= _minutes_to_ms(GRACE_PERIOD_MINUTES):
             no_citation_grace_period += 1
             _record_decision(
-                vehicle_id=vehicle_id,
+                ddb_vehicle_id=ddb_vehicle_id,
                 timestamp=event_ts,
                 decision_reason="grace-period",
                 decision_lane="high-confidence-automated",
@@ -265,7 +275,7 @@ def lambda_handler(event, context):
         if _has_valid_permit(permit_check_response):
             no_citation_valid_permit += 1
             _record_decision(
-                vehicle_id=vehicle_id,
+                ddb_vehicle_id=ddb_vehicle_id,
                 timestamp=event_ts,
                 decision_reason="valid-permit",
                 decision_lane="high-confidence-automated",
@@ -293,7 +303,7 @@ def lambda_handler(event, context):
             routed_to_citation_create += 1
 
         _record_decision(
-            vehicle_id=vehicle_id,
+            ddb_vehicle_id=ddb_vehicle_id,
             timestamp=event_ts,
             decision_reason="invalid-permit-citation",
             decision_lane="high-confidence-automated",
@@ -370,8 +380,13 @@ def _create_citation(vehicle_id, plate_text, reason, occurrence_key, issued_by, 
     return {"duplicate": bool(body_json.get("duplicate"))}
 
 
-def _vehicle_events(vehicle_id):
-    response = gate_events_table.scan(FilterExpression=Attr("vehicle_id").eq(vehicle_id))
+def _vehicle_events_for_pairing(normalized_plate, raw_plate):
+    expr = Attr("plate_text").eq(normalized_plate)
+    if raw_plate is not None:
+        trimmed = str(raw_plate).strip()
+        if trimmed and trimmed.upper() != normalized_plate:
+            expr = expr | Attr("plate_text").eq(trimmed)
+    response = gate_events_table.scan(FilterExpression=expr)
     items = response.get("Items", [])
     filtered = []
     for item in items:
@@ -402,7 +417,7 @@ def _find_counterpart(events, current_ts, current_direction):
 
 
 def _record_decision(
-    vehicle_id,
+    ddb_vehicle_id,
     timestamp,
     decision_reason,
     decision_lane,
@@ -427,7 +442,7 @@ def _record_decision(
         values[":ok"] = occurrence_key
 
     gate_events_table.update_item(
-        Key={"timestamp": int(timestamp), "vehicle_id": vehicle_id},
+        Key={"timestamp": int(timestamp), "vehicle_id": ddb_vehicle_id},
         UpdateExpression="SET " + ", ".join(updates),
         ExpressionAttributeValues=values,
     )
@@ -491,6 +506,26 @@ def _has_valid_permit(lambda_response):
         return False
     permit_status = str(body_json.get("permitStatus", "")).upper()
     return permit_status in {"VALID", "ACTIVE"}
+
+
+def _normalize_plate(value):
+    """Match permit-admin style so permit-checker lookups align with Permits keys."""
+    if value is None:
+        return None
+    s = str(value).strip().upper()
+    return s if s else None
+
+
+def _coerce_ddb_vehicle_key(value):
+    """vehicle_id exactly as writers store it (DynamoDB table key component)."""
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        if value % 1 == 0:
+            return str(int(value))
+        return format(value.normalize(), "f").rstrip("0").rstrip(".") or None
+    s = str(value).strip()
+    return s if s else None
 
 
 def _from_ddb_image(image):
