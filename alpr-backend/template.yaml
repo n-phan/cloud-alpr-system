@@ -279,6 +279,7 @@ Resources:
     Properties:
       RestApiId: !Ref ExistingApiId
       StageName: prod
+      Description: !Sub "Deployed by SAM stack ${AWS::StackName} — routes: get-citations, validation-backlog"
 
 Outputs:
   CitationLookupFunctionArn:
