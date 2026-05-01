@@ -3,5 +3,6 @@
   "processed": 2,
   "routedToPermitChecker": 1,
   "routedToValidationBacklog": 1,
+  "routedToCitationCreate": 1,
   "threshold": 0.85
 }
