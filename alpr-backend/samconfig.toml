@@ -1,0 +1,6 @@
+[default.deploy.parameters]
+stack_name     = "alpr-citations-stack"
+region         = "us-west-2"
+capabilities   = "CAPABILITY_IAM"
+resolve_s3     = true
+no_fail_on_empty_changeset = true

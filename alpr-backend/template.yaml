@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  ALPR citation-lookup-handler Lambda and GET /get-citations API Gateway integration.
+  Existing Lambda functions (presigned-url-generator, permit-checker, etc.) were created
+  manually and are updated via `make deploy fn=<name>`. New functions are added here.
+
+Parameters:
+  ExistingApiId:
+    Type: String
+    Default: o5h6jttjtc
+    Description: REST API ID of the existing alpr-api API Gateway
+
+  ExistingApiRootResourceId:
+    Type: String
+    Default: d9mbk9yx3f
+    Description: Root (/) resource ID of the existing API Gateway
+
+Globals:
+  Function:
+    Runtime: python3.11
+    MemorySize: 256
+    Timeout: 30
+
+Resources:
+
+  # ── Lambda ──────────────────────────────────────────────────────────────────
+
+  CitationLookupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: citation-lookup-handler
+      CodeUri: lambda/citation-lookup-handler/
+      Handler: handler.lambda_handler
+      # Reuse the same execution role as all manually-created functions
+      Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
+      Environment:
+        Variables:
+          CITATIONS_TABLE: Citations
+
+  # ── API Gateway: GET /get-citations ─────────────────────────────────────────
+
+  GetCitationsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ExistingApiId
+      ParentId: !Ref ExistingApiRootResourceId
+      PathPart: get-citations
+
+  GetCitationsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ExistingApiId
+      ResourceId: !Ref GetCitationsResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub >-
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CitationLookupFunction.Arn}/invocations
+
+  GetCitationsOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ExistingApiId
+      ResourceId: !Ref GetCitationsResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: '204'
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: '204'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  # Grant API Gateway permission to invoke the Lambda
+  CitationLookupApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt CitationLookupFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingApiId}/*/GET/get-citations"
+
+  # Redeploy the existing API so the new route goes live on the prod stage
+  ApiRedeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - GetCitationsMethod
+      - GetCitationsOptionsMethod
+    Properties:
+      RestApiId: !Ref ExistingApiId
+      StageName: prod
+
+Outputs:
+  CitationLookupFunctionArn:
+    Description: ARN of the citation-lookup-handler Lambda
+    Value: !GetAtt CitationLookupFunction.Arn
+
+  GetCitationsEndpoint:
+    Description: Public endpoint for citation lookup
+    Value: !Sub "https://${ExistingApiId}.execute-api.${AWS::Region}.amazonaws.com/prod/get-citations"

@@ -1,0 +1,59 @@
+{
+    "Items": [
+        {
+            "plate_text": {
+                "S": "XYZ999"
+            },
+            "issued_at": {
+                "N": "1776470257192"
+            },
+            "citation_id": {
+                "S": "56d42cd4-a961-4503-b11a-aa009f23a9c8"
+            },
+            "vehicle_id": {
+                "S": "V99"
+            },
+            "status": {
+                "S": "issued"
+            },
+            "issued_by": {
+                "S": "admin-test"
+            },
+            "amount": {
+                "N": "150"
+            },
+            "reason": {
+                "S": "No valid permit"
+            }
+        },
+        {
+            "plate_text": {
+                "S": "VCIT1776620402"
+            },
+            "issued_at": {
+                "N": "1776620409637"
+            },
+            "citation_id": {
+                "S": "595e5368-77c9-416a-a3b1-4c21a1c2f994"
+            },
+            "vehicle_id": {
+                "S": "VCIT1776620402"
+            },
+            "status": {
+                "S": "issued"
+            },
+            "issued_by": {
+                "S": "verify-run"
+            },
+            "amount": {
+                "N": "120"
+            },
+            "reason": {
+                "S": "Test reason"
+            }
+        }
+    ],
+    "Count": 2,
+    "ScannedCount": 2,
+    "ConsumedCapacity": null
+}

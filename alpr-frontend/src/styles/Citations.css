@@ -1,0 +1,189 @@
+.citations-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0066cc, #004fa3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1rem;
+}
+
+.citations-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 700px;
+  padding: 2rem;
+}
+
+.citations-card h1 {
+  color: #0066cc;
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+  text-align: center;
+}
+
+.citations-card .subtitle {
+  text-align: center;
+  color: #666;
+  font-size: 0.95rem;
+  margin-bottom: 2rem;
+}
+
+.lookup-form {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.lookup-form input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: border-color 0.3s;
+}
+
+.lookup-form input:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+.lookup-form input:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.lookup-form button {
+  padding: 0.75rem 1.5rem;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s;
+  white-space: nowrap;
+}
+
+.lookup-form button:hover:not(:disabled) {
+  background: #004fa3;
+}
+
+.lookup-form button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background: #fee;
+  color: #c00;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid #c00;
+}
+
+.no-citations {
+  text-align: center;
+  color: #666;
+  padding: 2rem 0;
+}
+
+.no-citations .check-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.results-header {
+  font-size: 0.9rem;
+  color: #555;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.citation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.citation-item {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 1.25rem;
+  background: #fafafa;
+}
+
+.citation-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.citation-reason {
+  font-weight: 600;
+  color: #222;
+  font-size: 1rem;
+}
+
+.citation-status {
+  font-size: 0.8rem;
+  font-weight: bold;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  text-transform: capitalize;
+}
+
+.citation-status.issued {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.citation-status.paid {
+  background: #d1e7dd;
+  color: #0a5132;
+}
+
+.citation-status.disputed {
+  background: #cfe2ff;
+  color: #084298;
+}
+
+.citation-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #555;
+}
+
+.citation-meta span {
+  display: flex;
+  flex-direction: column;
+}
+
+.citation-meta .label {
+  font-size: 0.75rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.1rem;
+}
+
+.citation-meta .value {
+  color: #333;
+  font-weight: 500;
+}
+
+.citation-amount {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #cc3300;
+}

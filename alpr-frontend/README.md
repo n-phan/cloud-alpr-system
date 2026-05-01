@@ -114,9 +114,3 @@ Admin:   admin@example.com / Admin123!@
 - `DEF-9012` → VALID
 
 **Events**: 4 mock events auto-generated
-
----
-
-## Next Phase
-
-Phase 3 will replace mock API calls in `src/services/api.js` with real Lambda functions.
