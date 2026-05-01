@@ -68,8 +68,8 @@ function App() {
 
       <main className={user ? 'app-content' : ''}>
         <Routes>
-          <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login onLoginSuccess={checkAuth} />} />
-          <Route path="/citations" element={<Citations />} />
+          <Route path="/" element={<Citations />} />
+          <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login onLoginSuccess={checkAuth} />} />
           <Route
             path="/dashboard"
             element={

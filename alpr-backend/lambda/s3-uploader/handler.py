@@ -1,6 +1,7 @@
 import json
 import boto3
 import base64
+import mimetypes
 from datetime import datetime
 
 s3_client = boto3.client('s3', region_name='us-west-2')
@@ -35,12 +36,17 @@ def lambda_handler(event, context):
         timestamp = datetime.now().isoformat().replace(':', '-')
         key = f"{timestamp}_{file_name}"
         
+        # Derive content type from file name; fall back to octet-stream if unknown
+        content_type, _ = mimetypes.guess_type(file_name)
+        if not content_type or not content_type.startswith('image/'):
+            content_type = 'application/octet-stream'
+
         # Upload to S3
         s3_client.put_object(
             Bucket='alpr-ingress-cmpe281',
             Key=key,
             Body=image_bytes,
-            ContentType='image/jpeg'
+            ContentType=content_type
         )
 
         # Generate S3 URL

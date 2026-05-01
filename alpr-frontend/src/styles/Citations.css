@@ -187,3 +187,88 @@
   font-weight: 700;
   color: #cc3300;
 }
+
+.permit-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.875rem 1.25rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.permit-card-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  white-space: nowrap;
+}
+
+.permit-card-body {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.permit-status-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.2rem 0.65rem;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.permit-status-badge.valid {
+  background: #d1e7dd;
+  color: #0a5132;
+}
+
+.permit-status-badge.expired {
+  background: #fee;
+  color: #c00;
+}
+
+.permit-status-badge.unknown {
+  background: #f0f0f0;
+  color: #888;
+}
+
+.permit-detail {
+  font-size: 0.85rem;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.permit-detail .label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #aaa;
+}
+
+.staff-login-footer {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.staff-login-link {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.staff-login-link:hover {
+  color: white;
+  border-color: white;
+}

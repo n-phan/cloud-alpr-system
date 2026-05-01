@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { getCitationsByPlate } from '../services/api';
+import { Link } from 'react-router-dom';
+import { getCitationsByPlate, getPermitStatus } from '../services/api';
 import '../styles/Citations.css';
 
 function formatDate(timestampMs) {
@@ -11,6 +12,32 @@ function formatDate(timestampMs) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function PermitCard({ permit }) {
+  if (!permit) return null;
+
+  if (!permit.found) {
+    return (
+      <div className="permit-card permit-not-found">
+        <span className="permit-card-label">Permit Status</span>
+        <span className="permit-status-badge unknown">No permit on file</span>
+      </div>
+    );
+  }
+
+  const statusClass = permit.permitStatus === 'VALID' ? 'valid' : 'expired';
+
+  return (
+    <div className="permit-card">
+      <span className="permit-card-label">Permit Status</span>
+      <div className="permit-card-body">
+        <span className={`permit-status-badge ${statusClass}`}>{permit.permitStatus}</span>
+        {permit.owner && <span className="permit-detail"><span className="label">Owner</span> {permit.owner}</span>}
+        {permit.expiryDate && <span className="permit-detail"><span className="label">Expires</span> {permit.expiryDate}</span>}
+      </div>
+    </div>
+  );
 }
 
 function CitationItem({ citation }) {
@@ -54,6 +81,7 @@ function CitationItem({ citation }) {
 export default function Citations() {
   const [plate, setPlate] = useState('');
   const [citations, setCitations] = useState(null);
+  const [permit, setPermit] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -65,15 +93,26 @@ export default function Citations() {
     setLoading(true);
     setError(null);
     setCitations(null);
+    setPermit(null);
 
-    try {
-      const data = await getCitationsByPlate(trimmed);
-      setCitations(data.citations || []);
-    } catch (err) {
-      setError(err.message || 'Failed to retrieve citations. Please try again.');
-    } finally {
-      setLoading(false);
+    const [citationsResult, permitResult] = await Promise.allSettled([
+      getCitationsByPlate(trimmed),
+      getPermitStatus(trimmed),
+    ]);
+
+    if (citationsResult.status === 'fulfilled') {
+      setCitations(citationsResult.value.citations || []);
+    } else {
+      setError(citationsResult.reason?.message || 'Failed to retrieve citations. Please try again.');
     }
+
+    if (permitResult.status === 'fulfilled') {
+      setPermit({ found: true, ...permitResult.value });
+    } else {
+      setPermit({ found: false });
+    }
+
+    setLoading(false);
   };
 
   return (
@@ -99,6 +138,8 @@ export default function Citations() {
 
         {error && <p className="error-message">{error}</p>}
 
+        <PermitCard permit={permit} />
+
         {citations !== null && citations.length === 0 && (
           <div className="no-citations">
             <div className="check-icon">✓</div>
@@ -119,6 +160,10 @@ export default function Citations() {
             </div>
           </>
         )}
+      </div>
+
+      <div className="staff-login-footer">
+        <Link to="/login" className="staff-login-link">Staff / Admin Login</Link>
       </div>
     </div>
   );
