@@ -107,6 +107,7 @@ Resources:
           CONFIDENCE_THRESHOLD: "0.7"
           PERMIT_CHECKER_FUNCTION: permit-checker
           VALIDATION_BACKLOG_FUNCTION: validation-backlog-handler
+          CITATION_CREATE_FUNCTION: citation-create-handler
 
   CitationCreateHandlerFunction:
     Type: AWS::Serverless::Function

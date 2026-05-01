@@ -33,7 +33,7 @@ CloudFormation stack. Functions originally created manually were migrated into t
 | `plate-submission-handler` | `POST /submit-plate` |
 | `validation-backlog-handler` | — (internal) |
 | `validation-backlog-admin-handler` | — (internal) |
-| `gateevents-stream-router` | — (DynamoDB stream trigger) |
+| `gateevents-stream-router` | — (DynamoDB stream trigger; runs permit check and auto-creates citation when permit is invalid) |
 | `citation-create-handler` | `POST /citation` |
 | `s3-uploader` | `POST /upload-image` |
 | `citation-lookup-handler` | `GET /get-citations` |

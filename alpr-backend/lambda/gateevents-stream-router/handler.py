@@ -9,6 +9,9 @@ PERMIT_CHECKER_FUNCTION = os.environ.get("PERMIT_CHECKER_FUNCTION", "permit-chec
 VALIDATION_BACKLOG_FUNCTION = os.environ.get(
     "VALIDATION_BACKLOG_FUNCTION", "validation-backlog-handler"
 )
+CITATION_CREATE_FUNCTION = os.environ.get(
+    "CITATION_CREATE_FUNCTION", "citation-create-handler"
+)
 
 lambda_client = boto3.client("lambda")
 
@@ -17,6 +20,7 @@ def lambda_handler(event, context):
     processed = 0
     routed_to_permit_checker = 0
     routed_to_validation_backlog = 0
+    routed_to_citation_create = 0
 
     for record in event.get("Records", []):
         # Only process newly inserted GateEvents items.
@@ -44,8 +48,24 @@ def lambda_handler(event, context):
                     "vehicleId": vehicle_id,
                 }
             }
-            _invoke(PERMIT_CHECKER_FUNCTION, payload)
+            permit_check_response = _invoke(PERMIT_CHECKER_FUNCTION, payload)
             routed_to_permit_checker += 1
+
+            if not _has_valid_permit(permit_check_response):
+                citation_payload = {
+                    "httpMethod": "POST",
+                    "body": json.dumps(
+                        {
+                            "vehicleId": vehicle_id,
+                            "plateText": plate_text,
+                            "reason": "No valid permit",
+                            "status": "issued",
+                            "issuedBy": "gateevents-stream-router",
+                        }
+                    ),
+                }
+                _invoke(CITATION_CREATE_FUNCTION, citation_payload)
+                routed_to_citation_create += 1
         else:
             body = {
                 "vehicleId": vehicle_id,
@@ -68,6 +88,7 @@ def lambda_handler(event, context):
         "processed": processed,
         "routedToPermitChecker": routed_to_permit_checker,
         "routedToValidationBacklog": routed_to_validation_backlog,
+        "routedToCitationCreate": routed_to_citation_create,
         "threshold": THRESHOLD,
     }
 
@@ -81,6 +102,34 @@ def _invoke(function_name, payload):
     status_code = resp.get("StatusCode", 0)
     if status_code < 200 or status_code >= 300:
         raise RuntimeError(f"Invoke failed for {function_name}: {status_code}")
+    payload_stream = resp.get("Payload")
+    if payload_stream is None:
+        return {}
+    raw = payload_stream.read()
+    if not raw:
+        return {}
+    return json.loads(raw.decode("utf-8"))
+
+
+def _has_valid_permit(lambda_response):
+    """
+    permit-checker wraps permitStatus inside a JSON-encoded body string.
+    Treat any non-200 or missing/invalid permitStatus as not valid.
+    """
+    if lambda_response.get("statusCode") != 200:
+        return False
+
+    body = lambda_response.get("body")
+    if not body:
+        return False
+
+    try:
+        body_json = json.loads(body) if isinstance(body, str) else body
+    except json.JSONDecodeError:
+        return False
+
+    permit_status = str(body_json.get("permitStatus", "")).upper()
+    return permit_status in {"VALID", "ACTIVE"}
 
 
 def _from_ddb_image(image):

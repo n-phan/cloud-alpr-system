@@ -229,6 +229,7 @@ cat response.json
 - `processed`: 2
 - `routedToPermitChecker`: 1
 - `routedToValidationBacklog`: 1
+- `routedToCitationCreate`: 1 (when permit check is not valid)
 
 ---
 
