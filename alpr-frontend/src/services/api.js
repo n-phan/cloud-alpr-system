@@ -90,10 +90,47 @@ export const getValidationBacklog = async (status = 'pending_review', limit = 50
 
 export const updateValidationReview = async (backlogId, { status, notes, reviewedBy }) => {
   try {
-    const response = await api.put('/validation-backlog', { backlogId, status, notes, reviewedBy });
+    const payload = { backlogId, status };
+    if (notes?.trim()) payload.notes = notes.trim();
+    if (reviewedBy) payload.reviewedBy = reviewedBy;
+    const response = await api.put('/validation-backlog', payload);
     return response.data;
   } catch (error) {
     console.error('Error updating validation review:', error);
+    throw error;
+  }
+};
+
+export const getPermits = async (limit = 100) => {
+  try {
+    const response = await api.get('/permits', { params: { limit } });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching permits:', error);
+    throw error;
+  }
+};
+
+export const createPermit = async ({ vehicleId, owner, expiryDate }) => {
+  try {
+    const response = await api.post('/permits', { vehicleId, owner, expiryDate });
+    return response.data;
+  } catch (error) {
+    console.error('Error creating permit:', error);
+    throw error;
+  }
+};
+
+export const updatePermit = async (vehicleId, { status, owner, expiryDate }) => {
+  try {
+    const payload = { vehicleId };
+    if (status) payload.status = status;
+    if (owner) payload.owner = owner;
+    if (expiryDate) payload.expiryDate = expiryDate;
+    const response = await api.put('/permits', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating permit:', error);
     throw error;
   }
 };

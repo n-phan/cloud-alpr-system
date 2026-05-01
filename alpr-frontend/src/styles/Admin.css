@@ -13,6 +13,40 @@
 
 .admin-subtitle {
   color: #666;
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
   font-size: 0.95rem;
+}
+
+/* Tabs */
+.admin-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 1.5rem;
+}
+
+.admin-tab {
+  padding: 0.65rem 1.25rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #666;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.admin-tab:hover {
+  color: #333;
+}
+
+.admin-tab--active {
+  color: #0066cc;
+  border-bottom-color: #0066cc;
+}
+
+.admin-tab-content {
+  min-height: 200px;
 }

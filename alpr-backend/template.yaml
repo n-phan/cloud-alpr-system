@@ -142,6 +142,18 @@ Resources:
         Variables:
           CITATIONS_TABLE: Citations
 
+  PermitAdminHandlerFunction:
+    Type: AWS::Serverless::Function
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: permit-admin-handler
+      CodeUri: lambda/permit-admin-handler/
+      Handler: handler.lambda_handler
+      Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
+      Environment:
+        Variables:
+          PERMITS_TABLE: Permits
+
   # ── API Gateway: GET /get-citations ─────────────────────────────────────────
   # Only this route is managed here — existing routes were wired manually
   # and continue to work independently.
@@ -269,6 +281,88 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingApiId}/*/*/validation-backlog"
 
+  # ── API Gateway: GET+POST+PUT /permits ──────────────────────────────────────
+
+  PermitsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ExistingApiId
+      ParentId: !Ref ExistingApiRootResourceId
+      PathPart: permits
+
+  PermitsGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ExistingApiId
+      ResourceId: !Ref PermitsResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub >-
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PermitAdminHandlerFunction.Arn}/invocations
+
+  PermitsPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ExistingApiId
+      ResourceId: !Ref PermitsResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub >-
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PermitAdminHandlerFunction.Arn}/invocations
+
+  PermitsPutMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ExistingApiId
+      ResourceId: !Ref PermitsResource
+      HttpMethod: PUT
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub >-
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PermitAdminHandlerFunction.Arn}/invocations
+
+  PermitsOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ExistingApiId
+      ResourceId: !Ref PermitsResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: '204'
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,PUT,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: '204'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  PermitAdminApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt PermitAdminHandlerFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingApiId}/*/*/permits"
+
   ApiRedeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
@@ -277,10 +371,14 @@ Resources:
       - ValidationBacklogGetMethod
       - ValidationBacklogPutMethod
       - ValidationBacklogOptionsMethod
+      - PermitsGetMethod
+      - PermitsPostMethod
+      - PermitsPutMethod
+      - PermitsOptionsMethod
     Properties:
       RestApiId: !Ref ExistingApiId
       StageName: prod
-      Description: !Sub "Deployed by SAM stack ${AWS::StackName} — routes: get-citations, validation-backlog"
+      Description: !Sub "Deployed by SAM stack ${AWS::StackName} — routes: get-citations, validation-backlog, permits"
 
 Outputs:
   CitationLookupFunctionArn:
@@ -290,3 +388,7 @@ Outputs:
   GetCitationsEndpoint:
     Description: Public endpoint for citation lookup
     Value: !Sub "https://${ExistingApiId}.execute-api.${AWS::Region}.amazonaws.com/prod/get-citations"
+
+  PermitsEndpoint:
+    Description: Public endpoint for permit management (GET/POST/PUT)
+    Value: !Sub "https://${ExistingApiId}.execute-api.${AWS::Region}.amazonaws.com/prod/permits"
