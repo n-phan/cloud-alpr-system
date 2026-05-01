@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { uploadImageToS3, getPermitStatus } from '../services/api';
+import { uploadImageToS3 } from '../services/api';
 import '../styles/ImageUpload.css';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -43,18 +43,6 @@ function createEntry(file) {
   };
 }
 
-// Mock recognition — replace with real ECS inference in Phase 6
-const MOCK_PLATES = [
-  { plate: 'ABC-1234', confidence: 0.98 },
-  { plate: 'XYZ-5678', confidence: 0.95 },
-  { plate: 'DEF-9012', confidence: 0.92 },
-];
-
-async function mockRecognize(imageUrl) {
-  await new Promise(r => setTimeout(r, 2000));
-  const detected = MOCK_PLATES[Math.floor(Math.random() * MOCK_PLATES.length)];
-  return { plateText: detected.plate, confidence: detected.confidence, imageUrl };
-}
 
 export default function ImageUpload({ onResultReceived }) {
   const [entries, setEntries] = useState([]);
@@ -129,21 +117,9 @@ export default function ImageUpload({ onResultReceived }) {
         });
 
         const s3Result = await uploadImageToS3(base64, entry.file.name);
-        const recognition = await mockRecognize(s3Result.imageUrl);
-        const permitData = await getPermitStatus(recognition.plateText);
 
-        const result = {
-          plateText: recognition.plateText,
-          confidence: recognition.confidence,
-          permitStatus: permitData.permitStatus,
-          owner: permitData.owner,
-          expiryDate: permitData.expiryDate,
-          eventType: 'ENTRY',
-          imageUrl: s3Result.imageUrl,
-        };
-
-        updateEntry(entry.id, { status: 'done', result });
-        if (onResultReceived) onResultReceived(result);
+        updateEntry(entry.id, { status: 'done', result: { imageUrl: s3Result.imageUrl } });
+        if (onResultReceived) onResultReceived({ imageUrl: s3Result.imageUrl });
       } catch (err) {
         updateEntry(entry.id, { status: 'error', error: err.message || 'Upload failed' });
       }
@@ -216,18 +192,9 @@ export default function ImageUpload({ onResultReceived }) {
                 <p className="file-card-error">{entry.error}</p>
               )}
 
-              {entry.status === 'done' && entry.result && (
-                <div className="file-card-result">
-                  <p><strong>Plate:</strong> {entry.result.plateText}</p>
-                  <p><strong>Confidence:</strong> {(entry.result.confidence * 100).toFixed(1)}%</p>
-                  <p>
-                    <strong>Permit:</strong>{' '}
-                    <span className={entry.result.permitStatus === 'VALID' ? 'status-valid' : 'status-invalid'}>
-                      {entry.result.permitStatus}
-                    </span>
-                  </p>
-                  {entry.result.owner && <p><strong>Owner:</strong> {entry.result.owner}</p>}
-                  {entry.result.expiryDate && <p><strong>Expires:</strong> {entry.result.expiryDate}</p>}
+              {entry.status === 'done' && (
+                <div className="file-card-result file-card-result--success">
+                  Uploaded and queued for processing.
                 </div>
               )}
             </div>

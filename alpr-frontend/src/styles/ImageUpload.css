@@ -204,8 +204,10 @@
   color: #333;
 }
 
-.file-card-result p {
-  margin: 0.2rem 0;
+.file-card-result--success {
+  color: #1a7f4b;
+  font-weight: 600;
+  font-size: 0.8rem;
 }
 
 /* ── Upload button ── */
