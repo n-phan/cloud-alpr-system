@@ -1,8 +1,10 @@
-# ALPR Parking System - Frontend
+# ALPR Parking System — Frontend
 
-React + Vite frontend for automated license plate recognition.
+React + Vite frontend for automated license plate recognition, served via CloudFront → S3.
 
-## Quick Start
+---
+
+## Local Development
 
 ```bash
 npm install
@@ -11,65 +13,107 @@ npm run dev
 
 Open `http://localhost:5173`
 
----
+### Environment Variables
 
-## Environment Variables
+Create `.env.local` in the project root:
 
-Create `.env.local`:
 ```
 VITE_COGNITO_REGION=us-west-2
 VITE_COGNITO_USER_POOL_ID=us-west-2_xxxxxxxxxxxxx
 VITE_COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxx
-VITE_API_ENDPOINT=http://localhost:3001
+VITE_API_ENDPOINT=https://o5h6jttjtc.execute-api.us-west-2.amazonaws.com/prod
 ```
 
 ---
 
-## Components
+## Deployment
 
-### ImageUpload
-**Test**: Click "Upload Image" tab
-- Drag/drop an image or click to select
-- Image preview displays
-- Click "Upload & Analyze"
-- See mock result card (plate: ABC-1234, confidence: 98%, status: VALID)
+The Makefile handles building and deploying to S3 + CloudFront in one command.
 
-### PermitDashboard
-**Test**: Click "Check Permit" tab
-- Enter vehicle ID: `ABC-1234`, `XYZ-5678`, or `DEF-9012`
-- Press Enter or click "Lookup"
-- See permit card with owner name and status
+| Command | Description |
+|---|---|
+| `make deploy` | Vite build → sync to S3 → invalidate CloudFront cache |
+| `make build` | Vite build only (outputs to `dist/`) |
 
-### EventLogStaff
-**Test**: Staff Dashboard → "Recent Events" tab
-- Shows table: Time, Vehicle ID, Plate, Permit Status, Event Type
-- NO Confidence column (staff can't see)
-- Type in filter box to search by vehicle ID or plate
+### Deploy
 
-### EventLogAdmin
-**Test**: Admin Dashboard → Events table
-- Shows all columns INCLUDING Confidence (%)
-- "View Event" button in each row
-- Click "View Event" → Modal pops up with event details + image placeholder
-- Filter same as staff version
+```bash
+make deploy
+```
 
-### Login
-**Test**: Sign in/out flow
-- Test User: `newuser@example.com` / `Test123!@`
-- Admin User: `admin@example.com` / `Admin123!@`
-- Sign in → redirects to dashboard
-- Sign out → redirects to login
+This runs three steps:
+1. `npm run build` — compiles the app into `dist/`
+2. `aws s3 sync dist/ s3://alpr-frontend-static-cmpe281/ --delete` — uploads changed files, removes deleted ones
+3. `aws cloudfront create-invalidation --paths "/*"` — purges the CDN cache so users get the new build immediately
 
-### Dashboard (Staff)
-**Test**: `/dashboard`
-- 3 tabs: Upload Image, Check Permit, Recent Events
-- No "Admin" badge in header
+**Prerequisites**: AWS CLI configured with credentials that have S3 write and CloudFront invalidation permissions.
 
-### Admin
-**Test**: `/admin`
-- Shows "Admin" badge in header
-- Advanced event table with confidence + View Event button
-- Try accessing `/admin` as non-admin → redirects to dashboard
+### Build Only
+
+```bash
+make build
+```
+
+Useful for verifying the production build locally before pushing. Serve it with:
+
+```bash
+npm run preview
+```
+
+---
+
+## Routes
+
+| Path | Access | Description |
+|---|---|---|
+| `/` | Public | Citation lookup by license plate + permit status |
+| `/login` | Public | Staff / Admin login (redirects to `/dashboard` if already signed in) |
+| `/dashboard` | Staff + Admin | Image upload, validation backlog, recent events |
+| `/admin` | Admin only | Full event log with confidence scores |
+
+---
+
+## Pages & Components
+
+### Citations (`/`) — Public
+- Search for citations by license plate
+- Displays permit status alongside citation results, even when no citations are found
+- "Staff / Admin Login" link at the bottom navigates to `/login`
+
+### Login (`/login`)
+- Email + password sign-in via Cognito
+- Test credentials:
+  ```
+  Staff: newuser@example.com / Test123!@
+  Admin: admin@example.com  / Admin123!@
+  ```
+- Successful login redirects to `/dashboard`
+
+### Dashboard (`/dashboard`) — Staff + Admin
+Three tabs:
+
+**Upload Image**
+- Drag-and-drop or click to select multiple images
+- Images are validated before upload: must be a real image file, ≤ 10 MB, and at least 100×100 px
+- Each file is processed independently — status shown per card (Ready → Processing → Done / Failed)
+- Displays plate text, confidence, and permit status per result
+
+**Validation Backlog**
+- Lists low-confidence uploads queued for manual review from the `ValidationBacklog` DynamoDB table
+- Filter by status: Pending / Approved / Rejected
+- Each card shows the captured image, plate text, confidence bar, and metadata
+- Pending items can be approved or rejected with optional notes
+- Actioning a card removes it from the current view immediately
+
+**Recent Events**
+- Live event table (auto-refreshes every 10 seconds)
+- Columns: Time, Vehicle ID, Plate Text, Permit Status, Event Type
+- "View Event" button opens a detail modal per row
+- Filter by vehicle ID or plate text
+
+### Admin (`/admin`) — Admin only
+- Full event log with Confidence column
+- Header badge toggles between **Admin** (navigates to `/admin`) and **Dashboard** (navigates to `/dashboard`) depending on current page
 
 ---
 
@@ -78,21 +122,22 @@ VITE_API_ENDPOINT=http://localhost:3001
 ```
 src/
 ├── components/
-│   ├── ImageUpload.jsx
-│   ├── PermitDashboard.jsx
-│   ├── EventLogStaff.jsx
-│   ├── EventLogAdmin.jsx
-│   └── ProtectedRoute.jsx
+│   ├── ImageUpload.jsx        — multi-file upload with validation
+│   ├── ValidationBacklog.jsx  — manual review queue for low-confidence images
+│   ├── EventLogStaff.jsx      — event table for staff (with View Event modal)
+│   ├── EventLogAdmin.jsx      — event table for admins (adds Confidence column)
+│   └── ProtectedRoute.jsx     — auth guard for protected routes
 ├── pages/
-│   ├── Login.jsx
-│   ├── Dashboard.jsx
-│   └── Admin.jsx
+│   ├── Citations.jsx          — public citation + permit lookup
+│   ├── Login.jsx              — Cognito sign-in
+│   ├── Dashboard.jsx          — staff dashboard (tabbed)
+│   └── Admin.jsx              — admin dashboard
 ├── services/
-│   ├── auth.js
-│   └── api.js
+│   ├── auth.js                — Cognito auth helpers
+│   └── api.js                 — API Gateway client (axios)
 ├── styles/
 │   └── [CSS files]
-└── App.jsx
+└── App.jsx                    — routing + auth state + header
 ```
 
 ---
@@ -100,17 +145,20 @@ src/
 ## Test Users
 
 ```
-Staff:   newuser@example.com / Test123!@
-Admin:   admin@example.com / Admin123!@
+Staff:  newuser@example.com / Test123!@
+Admin:  admin@example.com   / Admin123!@
 ```
+
+Both must be verified in Cognito before use.
 
 ---
 
 ## Mock Data
 
-**Permit Status**:
-- `ABC-1234` → VALID
-- `XYZ-5678` → EXPIRED
-- `DEF-9012` → VALID
+The image upload uses a mock recognition model (Phase 4) while the real YOLO inference service is pending (Phase 6). Mock plates recognised:
 
-**Events**: 4 mock events auto-generated
+| Plate | Confidence | Permit Status |
+|---|---|---|
+| ABC-1234 | 98% | VALID |
+| XYZ-5678 | 95% | EXPIRED |
+| DEF-9012 | 92% | VALID |
