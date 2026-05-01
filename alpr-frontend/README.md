@@ -96,7 +96,7 @@ Three tabs:
 - Drag-and-drop or click to select multiple images
 - Images are validated before upload: must be a real image file, ≤ 10 MB, and at least 100×100 px
 - Each file is processed independently — status shown per card (Ready → Processing → Done / Failed)
-- Displays plate text, confidence, and permit status per result
+- On success each card confirms the image was uploaded and queued for processing
 
 **Validation Backlog**
 - Lists low-confidence uploads queued for manual review from the `ValidationBacklog` DynamoDB table
@@ -112,7 +112,10 @@ Three tabs:
 - Filter by vehicle ID or plate text
 
 ### Admin (`/admin`) — Admin only
-- Full event log with Confidence column
+- Summary cards row showing Total Events, Valid Permits, Expired/Revoked, and Pending Validation (auto-refreshes every 30 s)
+- Two tabs:
+  - **Event Log** — full event table with Confidence column, filter by vehicle ID or plate
+  - **Permit Management** — table of all permits with Activate/Revoke actions, inline editing of owner and expiry date, and an Add Permit form
 - Header badge toggles between **Admin** (navigates to `/admin`) and **Dashboard** (navigates to `/dashboard`) depending on current page
 
 ---
@@ -126,6 +129,8 @@ src/
 │   ├── ValidationBacklog.jsx  — manual review queue for low-confidence images
 │   ├── EventLogStaff.jsx      — event table for staff (with View Event modal)
 │   ├── EventLogAdmin.jsx      — event table for admins (adds Confidence column)
+│   ├── AdminSummaryCards.jsx  — stat cards for the admin dashboard
+│   ├── PermitManager.jsx      — permit list with add, edit, activate, and revoke
 │   └── ProtectedRoute.jsx     — auth guard for protected routes
 ├── pages/
 │   ├── Citations.jsx          — public citation + permit lookup
@@ -153,12 +158,3 @@ Both must be verified in Cognito before use.
 
 ---
 
-## Mock Data
-
-The image upload uses a mock recognition model (Phase 4) while the real YOLO inference service is pending (Phase 6). Mock plates recognised:
-
-| Plate | Confidence | Permit Status |
-|---|---|---|
-| ABC-1234 | 98% | VALID |
-| XYZ-5678 | 95% | EXPIRED |
-| DEF-9012 | 92% | VALID |
