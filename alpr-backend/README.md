@@ -1,6 +1,7 @@
 # ALPR Backend
 
 Python Lambda functions and API Gateway configuration for the ALPR parking system.
+All infrastructure is defined as code in `template.yaml` and managed by AWS SAM / CloudFormation.
 
 All `make` commands must be run from the `alpr-backend/` directory.
 
@@ -21,6 +22,9 @@ All `make` commands must be run from the `alpr-backend/` directory.
 
 ## Lambda Function Overview
 
+All 10 functions are defined in `template.yaml` and tracked by the `alpr-citations-stack`
+CloudFormation stack. Functions originally created manually were migrated into the stack via CloudFormation resource import.
+
 | Function | API Route |
 |---|---|
 | `presigned-url-generator` | `POST /presigned-url` |
@@ -34,73 +38,96 @@ All `make` commands must be run from the `alpr-backend/` directory.
 | `s3-uploader` | `POST /upload-image` |
 | `citation-lookup-handler` | `GET /get-citations` |
 
-**Code changes** to any function are deployed the same way — `make deploy fn=<name>` — which zips the handler and calls `aws lambda update-function-code`.
-
-**Infrastructure changes** (new API Gateway routes, environment variables, IAM permissions) must go through SAM. `citation-lookup-handler`'s API route and permissions are defined in `template.yaml` and were provisioned with `make deploy-stack` when the function was first created. Run `make deploy-stack` again any time `template.yaml` changes — for everything else, `make deploy` is sufficient.
-
 ---
 
-## Deploying Code Changes
+## Deploying Changes
 
-### Updating an existing (manually-managed) function
+There are two deployment paths depending on what changed.
 
-```bash
-make deploy fn=<function-name>
-```
+### Infrastructure changes — `make deploy-stack`
 
-Example — update the permit checker after editing `lambda/permit-checker/handler.py`:
-
-```bash
-make deploy fn=permit-checker
-```
-
-This packages the handler and its dependencies into a zip file, uploads it to Lambda, and prints a confirmation table with the function name, last modified time, and code size.
-
-### Updating all existing functions at once
-
-```bash
-make deploy-all
-```
-
-Iterates through every manually-managed function and runs `make deploy` on each. Useful after a shared utility change or a batch update.
-
-### Updating the SAM-managed stack (`citation-lookup-handler`)
+Use this when you edit `template.yaml`: adding a new function, changing environment variables, modifying a timeout, adding an API Gateway route, etc.
 
 ```bash
 make deploy-stack
 ```
 
-Runs `sam build` followed by `sam deploy`. This packages the Lambda code, uploads it to S3, and applies the CloudFormation changeset. Use this any time you change `lambda/citation-lookup-handler/handler.py`, `template.yaml`, or `samconfig.toml`.
+Runs `sam build` (packages all functions) followed by `sam deploy` (applies the CloudFormation
+changeset). SAM manages an S3 bucket for build artifacts automatically.
 
-> **Note:** `make deploy-stack` also controls the API Gateway route (`GET /get-citations`). Any new Lambda functions or routes added to `template.yaml` will be created automatically on the next `deploy-stack` run.
+### Code-only changes — `make deploy fn=<name>`
+
+Use this for a quick code push when only `handler.py` changed. It zips the function and calls
+`aws lambda update-function-code` directly, bypassing CloudFormation for speed.
+
+```bash
+make deploy fn=permit-checker
+```
+
+The function is still tracked by the SAM stack — the next `make deploy-stack` will bring its
+code back in sync with whatever is in `template.yaml`.
+
+### Redeploy all functions at once
+
+```bash
+make deploy-all
+```
+
+Runs `make deploy` on every function. Useful after a dependency update or a shared utility change.
 
 ---
 
-## Debugging
+## How SAM Deployment Works (and Why S3 Is Involved)
 
-### Tail CloudWatch logs for any function
+CloudFormation is a cloud service that runs on AWS's servers, not your local machine. When you run `make deploy-stack`, SAM needs to get your Lambda code (the zipped handler + dependencies) to CloudFormation somehow — it can't pass a local file path because CloudFormation has no access to your laptop.
 
-```bash
-make logs fn=<function-name>
-```
+S3 is the bridge. The deployment process works in three steps:
 
-Streams live log output from the function's CloudWatch log group. Press `Ctrl+C` to stop.
+1. **`sam build`** — packages each function into a zip locally, stored under `.aws-sam/build/`
+2. **`sam deploy`** — uploads each zip to the SAM-managed S3 bucket, then sends CloudFormation
+   a template where every local `CodeUri` has been replaced with the corresponding S3 location
+   (e.g., `s3://aws-sam-cli-managed-.../abc123.zip`)
+3. **CloudFormation** — reads the template, fetches the zips from S3, and deploys them to Lambda
 
-### Invoke a function locally with its test payload
+The bucket named `aws-sam-cli-managed-default-samclisourcebucket-...` was created automatically by the `--resolve-s3` flag the first time `make deploy-stack` was run. You do not need to manage it manually — SAM handles uploads and versioning.
 
-```bash
-make test fn=<function-name>
-```
-
-Each function directory contains a `test-payload.json` with a representative input event. The response is printed to the terminal and also saved to `/tmp/<function-name>-response.json`.
+**Why `make deploy fn=<name>` doesn't use S3:**
+`make deploy` calls `aws lambda update-function-code --zip-file fileb://function.zip`, which uploads the zip directly from your machine to Lambda in one step — no CloudFormation, no S3.
+This is faster for code-only changes but bypasses the IaC lifecycle (no change preview, no rollback, no state tracking in the stack). Infrastructure changes always go through
+`make deploy-stack`.
 
 ---
 
 ## Adding a New Lambda Function
 
-**If the function needs a new API Gateway route**, add it to `template.yaml` following the pattern used by `CitationLookupFunction` and its associated `AWS::ApiGateway::*` resources. Deploy with `make deploy-stack`.
+1. Create a directory under `lambda/` with `handler.py` and `requirements.txt`
+2. Add a `test-payload.json` with a representative input event
+3. Add a new `AWS::Serverless::Function` block to `template.yaml`, following the pattern of any
+   existing function
+4. If the function needs an API Gateway route, add the corresponding `AWS::ApiGateway::Resource`,
+   `AWS::ApiGateway::Method`, `AWS::Lambda::Permission`, and `AWS::ApiGateway::Deployment`
+   resources to `template.yaml`
+5. Run `make deploy-stack` to provision everything
 
-**If the function is standalone** (stream trigger, internal), you can create it manually in the AWS Console using the same IAM role (`ALPRLambdaExecutionRole`) and then use `make deploy fn=<name>` for future code updates. Add the function name to the `EXISTING_FUNCTIONS` list in the `Makefile` to include it in `make deploy-all`.
+---
+
+## Debugging
+
+### Tail CloudWatch logs
+
+```bash
+make logs fn=<function-name>
+```
+
+Streams live output from the function's CloudWatch log group. Press `Ctrl+C` to stop.
+
+### Invoke a function with its test payload
+
+```bash
+make test fn=<function-name>
+```
+
+Sends `lambda/<function-name>/test-payload.json` to Lambda and prints the response.
 
 ---
 
@@ -108,17 +135,17 @@ Each function directory contains a `test-payload.json` with a representative inp
 
 ```
 alpr-backend/
-├── template.yaml          # SAM template — SAM-managed Lambdas + API Gateway resources
+├── template.yaml          # SAM template — all Lambda functions + API Gateway resources
 ├── samconfig.toml         # Persisted SAM deploy settings (stack name, region, S3 bucket)
 ├── Makefile               # Deploy, test, and log commands
 └── lambda/
-    ├── citation-lookup-handler/   # SAM-managed
+    ├── citation-lookup-handler/
     │   ├── handler.py
     │   ├── requirements.txt
     │   └── test-payload.json
-    ├── permit-checker/            # Manually managed
+    ├── permit-checker/
     │   ├── handler.py
     │   ├── requirements.txt
     │   └── test-payload.json
-    └── ...                        # Other functions follow the same structure
+    └── ...                # All other functions follow the same structure
 ```
