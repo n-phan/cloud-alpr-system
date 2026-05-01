@@ -1,10 +1,21 @@
 import json
 import os
+import time
 from decimal import Decimal
 
 import boto3
+from boto3.dynamodb.conditions import Attr
 
 THRESHOLD = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.7"))
+DETECTION_AUTO_CITATION_CONFIDENCE = float(
+    os.environ.get("DETECTION_AUTO_CITATION_CONFIDENCE", "0.7")
+)
+DETECTION_IDEMPOTENCY_BUCKET_MINUTES = int(
+    os.environ.get("DETECTION_IDEMPOTENCY_BUCKET_MINUTES", "15")
+)
+GRACE_PERIOD_MINUTES = int(os.environ.get("GRACE_PERIOD_MINUTES", "15"))
+MATCHING_WINDOW_MINUTES = int(os.environ.get("MATCHING_WINDOW_MINUTES", "240"))
+ORPHAN_POLICY = os.environ.get("ORPHAN_POLICY", "review").strip().lower()  # cite|review
 PERMIT_CHECKER_FUNCTION = os.environ.get("PERMIT_CHECKER_FUNCTION", "permit-checker")
 VALIDATION_BACKLOG_FUNCTION = os.environ.get(
     "VALIDATION_BACKLOG_FUNCTION", "validation-backlog-handler"
@@ -12,85 +23,442 @@ VALIDATION_BACKLOG_FUNCTION = os.environ.get(
 CITATION_CREATE_FUNCTION = os.environ.get(
     "CITATION_CREATE_FUNCTION", "citation-create-handler"
 )
+GATE_EVENTS_TABLE = os.environ.get("GATE_EVENTS_TABLE", "GateEvents")
 
 lambda_client = boto3.client("lambda")
+dynamodb = boto3.resource("dynamodb", region_name=os.environ.get("AWS_REGION", "us-west-2"))
+gate_events_table = dynamodb.Table(GATE_EVENTS_TABLE)
 
 
 def lambda_handler(event, context):
     processed = 0
+    skipped_invalid_payload = 0
+    high_confidence_events = 0
+    low_confidence_events = 0
     routed_to_permit_checker = 0
     routed_to_validation_backlog = 0
     routed_to_citation_create = 0
+    skipped_duplicate_citation = 0
+    no_citation_grace_period = 0
+    no_citation_valid_permit = 0
+    waiting_for_counterpart = 0
+    orphan_decisions = 0
+    detection_events = 0
+    detection_review_fallback = 0
 
     for record in event.get("Records", []):
-        # Only process newly inserted GateEvents items.
         if record.get("eventName") != "INSERT":
             continue
 
         new_image = (record.get("dynamodb") or {}).get("NewImage") or {}
         item = _from_ddb_image(new_image)
+
         vehicle_id = item.get("vehicle_id")
         plate_text = item.get("plate_text")
         confidence = _to_float(item.get("confidence"))
-        permit_status = item.get("permit_status")
-        event_type = item.get("event_type")
+        permit_status_in_event = item.get("permit_status")
+        event_type_raw = item.get("event_type")
         image_url = item.get("image_url")
+        event_ts = _to_int(item.get("timestamp"))
+        event_kind = _event_kind(event_type_raw)
+        event_direction = event_kind if event_kind in {"entry", "exit"} else None
 
-        if not vehicle_id or not plate_text or confidence is None:
-            print(f"Skipping record with missing fields: {item}")
+        if not vehicle_id or not plate_text or confidence is None or event_ts is None:
+            print(f"Skipping record with missing/invalid fields: {item}")
+            skipped_invalid_payload += 1
             continue
 
         processed += 1
 
-        if confidence > THRESHOLD:
-            payload = {
-                "queryStringParameters": {
-                    "vehicleId": vehicle_id,
-                }
-            }
-            permit_check_response = _invoke(PERMIT_CHECKER_FUNCTION, payload)
+        # Lane 1: Low-confidence review path
+        if confidence <= THRESHOLD:
+            low_confidence_events += 1
+            _route_to_backlog(
+                vehicle_id=vehicle_id,
+                plate_text=plate_text,
+                confidence=confidence,
+                permit_status=permit_status_in_event,
+                event_type=event_type_raw,
+                image_url=image_url,
+                notes="routed by two-lane flow: low-confidence review lane",
+            )
+            routed_to_validation_backlog += 1
+            _record_decision(
+                vehicle_id=vehicle_id,
+                timestamp=event_ts,
+                decision_reason="low-confidence-review",
+                decision_lane="low-confidence-review",
+            )
+            continue
+
+        # Dedicated detection workflow: immediate permit/citation path.
+        if event_kind == "detection":
+            detection_events += 1
+            if confidence < DETECTION_AUTO_CITATION_CONFIDENCE:
+                detection_review_fallback += 1
+                _route_to_backlog(
+                    vehicle_id=vehicle_id,
+                    plate_text=plate_text,
+                    confidence=confidence,
+                    permit_status=permit_status_in_event,
+                    event_type=event_type_raw,
+                    image_url=image_url,
+                    notes="detection confidence below auto-citation threshold; routed to review",
+                )
+                routed_to_validation_backlog += 1
+                _record_decision(
+                    vehicle_id=vehicle_id,
+                    timestamp=event_ts,
+                    decision_reason="detection-review-fallback",
+                    decision_lane="high-confidence-detection",
+                )
+                continue
+
+            permit_check_response = _invoke(
+                PERMIT_CHECKER_FUNCTION,
+                {"queryStringParameters": {"vehicleId": vehicle_id}},
+            )
             routed_to_permit_checker += 1
 
-            if not _has_valid_permit(permit_check_response):
-                citation_payload = {
-                    "httpMethod": "POST",
-                    "body": json.dumps(
-                        {
-                            "vehicleId": vehicle_id,
-                            "plateText": plate_text,
-                            "reason": "No valid permit",
-                            "status": "issued",
-                            "issuedBy": "gateevents-stream-router",
-                        }
-                    ),
-                }
-                _invoke(CITATION_CREATE_FUNCTION, citation_payload)
-                routed_to_citation_create += 1
-        else:
-            body = {
-                "vehicleId": vehicle_id,
-                "plateText": plate_text,
-                "confidence": confidence,
-            }
-            if permit_status is not None:
-                body["permitStatus"] = permit_status
-            if event_type is not None:
-                body["eventType"] = event_type
-            if image_url is not None:
-                body["imageUrl"] = image_url
+            if _has_valid_permit(permit_check_response):
+                no_citation_valid_permit += 1
+                _record_decision(
+                    vehicle_id=vehicle_id,
+                    timestamp=event_ts,
+                    decision_reason="valid-permit",
+                    decision_lane="high-confidence-detection",
+                )
+                continue
 
-            payload = {"body": json.dumps(body)}
-            _invoke(VALIDATION_BACKLOG_FUNCTION, payload)
+            occurrence_key = _occurrence_key_with_bucket(
+                vehicle_id=vehicle_id,
+                violation_type="invalid-permit-detection",
+                anchor_ts=event_ts,
+                bucket_minutes=DETECTION_IDEMPOTENCY_BUCKET_MINUTES,
+            )
+            create_result = _create_citation(
+                vehicle_id=vehicle_id,
+                plate_text=plate_text,
+                reason="No valid permit (detection event)",
+                occurrence_key=occurrence_key,
+                issued_by="gateevents-stream-router",
+                related_event_ts=event_ts,
+            )
+            if create_result.get("duplicate"):
+                skipped_duplicate_citation += 1
+            else:
+                routed_to_citation_create += 1
+            _record_decision(
+                vehicle_id=vehicle_id,
+                timestamp=event_ts,
+                decision_reason="invalid-permit-citation",
+                decision_lane="high-confidence-detection",
+                occurrence_key=occurrence_key,
+            )
+            continue
+
+        if not event_direction:
+            detection_review_fallback += 1
+            _route_to_backlog(
+                vehicle_id=vehicle_id,
+                plate_text=plate_text,
+                confidence=confidence,
+                permit_status=permit_status_in_event,
+                event_type=event_type_raw,
+                image_url=image_url,
+                notes="unknown event direction/type; routed to review",
+            )
             routed_to_validation_backlog += 1
+            _record_decision(
+                vehicle_id=vehicle_id,
+                timestamp=event_ts,
+                decision_reason="unknown-event-type-review",
+                decision_lane="high-confidence-automated",
+            )
+            continue
+
+        # Lane 2: High-confidence automated enforcement
+        high_confidence_events += 1
+        counterpart = _find_counterpart(
+            events=_vehicle_events(vehicle_id),
+            current_ts=event_ts,
+            current_direction=event_direction,
+        )
+
+        # If no pair exists, wait within matching window.
+        if counterpart is None:
+            age_ms = int(time.time() * 1000) - event_ts
+            if age_ms < _minutes_to_ms(MATCHING_WINDOW_MINUTES):
+                waiting_for_counterpart += 1
+                _record_decision(
+                    vehicle_id=vehicle_id,
+                    timestamp=event_ts,
+                    decision_reason="waiting-for-counterpart",
+                    decision_lane="high-confidence-automated",
+                )
+                continue
+
+            orphan_decisions += 1
+            if ORPHAN_POLICY == "review":
+                _route_to_backlog(
+                    vehicle_id=vehicle_id,
+                    plate_text=plate_text,
+                    confidence=confidence,
+                    permit_status=permit_status_in_event,
+                    event_type=event_type_raw,
+                    image_url=image_url,
+                    notes="orphan event routed for manual review",
+                )
+                routed_to_validation_backlog += 1
+                _record_decision(
+                    vehicle_id=vehicle_id,
+                    timestamp=event_ts,
+                    decision_reason="orphan-review",
+                    decision_lane="high-confidence-automated",
+                )
+                continue
+
+            occurrence_key = _occurrence_key(
+                vehicle_id=vehicle_id,
+                violation_type=f"orphan-{event_direction}",
+                anchor_ts=event_ts,
+            )
+            create_result = _create_citation(
+                vehicle_id=vehicle_id,
+                plate_text=plate_text,
+                reason=f"{event_direction}-only event (no counterpart in matching window)",
+                occurrence_key=occurrence_key,
+                issued_by="gateevents-stream-router",
+                related_event_ts=event_ts,
+            )
+            if create_result.get("duplicate"):
+                skipped_duplicate_citation += 1
+            else:
+                routed_to_citation_create += 1
+            _record_decision(
+                vehicle_id=vehicle_id,
+                timestamp=event_ts,
+                decision_reason="orphan-citation",
+                decision_lane="high-confidence-automated",
+                occurrence_key=occurrence_key,
+            )
+            continue
+
+        duration_ms = abs(event_ts - counterpart["timestamp"])
+        if duration_ms <= _minutes_to_ms(GRACE_PERIOD_MINUTES):
+            no_citation_grace_period += 1
+            _record_decision(
+                vehicle_id=vehicle_id,
+                timestamp=event_ts,
+                decision_reason="grace-period",
+                decision_lane="high-confidence-automated",
+                counterpart_timestamp=counterpart["timestamp"],
+                duration_ms=duration_ms,
+            )
+            continue
+
+        permit_check_response = _invoke(
+            PERMIT_CHECKER_FUNCTION,
+            {"queryStringParameters": {"vehicleId": vehicle_id}},
+        )
+        routed_to_permit_checker += 1
+        if _has_valid_permit(permit_check_response):
+            no_citation_valid_permit += 1
+            _record_decision(
+                vehicle_id=vehicle_id,
+                timestamp=event_ts,
+                decision_reason="valid-permit",
+                decision_lane="high-confidence-automated",
+                counterpart_timestamp=counterpart["timestamp"],
+                duration_ms=duration_ms,
+            )
+            continue
+
+        occurrence_key = _occurrence_key(
+            vehicle_id=vehicle_id,
+            violation_type="invalid-permit",
+            anchor_ts=min(event_ts, counterpart["timestamp"]),
+        )
+        create_result = _create_citation(
+            vehicle_id=vehicle_id,
+            plate_text=plate_text,
+            reason="No valid permit",
+            occurrence_key=occurrence_key,
+            issued_by="gateevents-stream-router",
+            related_event_ts=event_ts,
+        )
+        if create_result.get("duplicate"):
+            skipped_duplicate_citation += 1
+        else:
+            routed_to_citation_create += 1
+
+        _record_decision(
+            vehicle_id=vehicle_id,
+            timestamp=event_ts,
+            decision_reason="invalid-permit-citation",
+            decision_lane="high-confidence-automated",
+            counterpart_timestamp=counterpart["timestamp"],
+            duration_ms=duration_ms,
+            occurrence_key=occurrence_key,
+        )
 
     return {
         "statusCode": 200,
         "processed": processed,
+        "skippedInvalidPayload": skipped_invalid_payload,
+        "highConfidenceLaneEvents": high_confidence_events,
+        "lowConfidenceLaneEvents": low_confidence_events,
         "routedToPermitChecker": routed_to_permit_checker,
         "routedToValidationBacklog": routed_to_validation_backlog,
         "routedToCitationCreate": routed_to_citation_create,
+        "skippedDuplicateCitation": skipped_duplicate_citation,
+        "noCitationGracePeriod": no_citation_grace_period,
+        "noCitationValidPermit": no_citation_valid_permit,
+        "waitingForCounterpart": waiting_for_counterpart,
+        "orphanDecisions": orphan_decisions,
+        "detectionEvents": detection_events,
+        "detectionReviewFallback": detection_review_fallback,
         "threshold": THRESHOLD,
+        "detectionAutoCitationConfidence": DETECTION_AUTO_CITATION_CONFIDENCE,
+        "detectionIdempotencyBucketMinutes": DETECTION_IDEMPOTENCY_BUCKET_MINUTES,
+        "gracePeriodMinutes": GRACE_PERIOD_MINUTES,
+        "matchingWindowMinutes": MATCHING_WINDOW_MINUTES,
+        "orphanPolicy": ORPHAN_POLICY,
     }
+
+
+def _route_to_backlog(vehicle_id, plate_text, confidence, permit_status, event_type, image_url, notes):
+    body = {
+        "vehicleId": vehicle_id,
+        "plateText": plate_text,
+        "confidence": confidence,
+        "decisionLane": "low-confidence-review",
+        "notes": notes,
+    }
+    if permit_status is not None:
+        body["permitStatus"] = permit_status
+    if event_type is not None:
+        body["eventType"] = event_type
+    if image_url is not None:
+        body["imageUrl"] = image_url
+    _invoke(VALIDATION_BACKLOG_FUNCTION, {"body": json.dumps(body)})
+
+
+def _create_citation(vehicle_id, plate_text, reason, occurrence_key, issued_by, related_event_ts):
+    response = _invoke(
+        CITATION_CREATE_FUNCTION,
+        {
+            "httpMethod": "POST",
+            "body": json.dumps(
+                {
+                    "vehicleId": vehicle_id,
+                    "plateText": plate_text,
+                    "reason": reason,
+                    "status": "issued",
+                    "issuedBy": issued_by,
+                    "occurrenceKey": occurrence_key,
+                    "notes": f"relatedEventTs={related_event_ts}",
+                }
+            ),
+        },
+    )
+    body = response.get("body")
+    try:
+        body_json = json.loads(body) if isinstance(body, str) else (body or {})
+    except json.JSONDecodeError:
+        body_json = {}
+    return {"duplicate": bool(body_json.get("duplicate"))}
+
+
+def _vehicle_events(vehicle_id):
+    response = gate_events_table.scan(FilterExpression=Attr("vehicle_id").eq(vehicle_id))
+    items = response.get("Items", [])
+    filtered = []
+    for item in items:
+        if _to_int(item.get("timestamp")) is None:
+            continue
+        kind = _event_kind(item.get("event_type"))
+        if kind not in {"entry", "exit"}:
+            continue
+        filtered.append(item)
+    return filtered
+
+
+def _find_counterpart(events, current_ts, current_direction):
+    opposite = "exit" if current_direction == "entry" else "entry"
+    window_ms = _minutes_to_ms(MATCHING_WINDOW_MINUTES)
+    candidates = []
+    for item in events:
+        ts = _to_int(item.get("timestamp"))
+        if ts is None:
+            continue
+        if _event_kind(item.get("event_type")) != opposite:
+            continue
+        if abs(current_ts - ts) <= window_ms:
+            candidates.append({"timestamp": ts})
+    if not candidates:
+        return None
+    return sorted(candidates, key=lambda c: abs(current_ts - c["timestamp"]))[0]
+
+
+def _record_decision(
+    vehicle_id,
+    timestamp,
+    decision_reason,
+    decision_lane,
+    counterpart_timestamp=None,
+    duration_ms=None,
+    occurrence_key=None,
+):
+    updates = ["decision_reason = :dr", "decision_lane = :dl", "decision_at = :da"]
+    values = {
+        ":dr": decision_reason,
+        ":dl": decision_lane,
+        ":da": int(time.time() * 1000),
+    }
+    if counterpart_timestamp is not None:
+        updates.append("counterpart_timestamp = :ct")
+        values[":ct"] = int(counterpart_timestamp)
+    if duration_ms is not None:
+        updates.append("duration_ms = :du")
+        values[":du"] = int(duration_ms)
+    if occurrence_key is not None:
+        updates.append("occurrence_key = :ok")
+        values[":ok"] = occurrence_key
+
+    gate_events_table.update_item(
+        Key={"timestamp": int(timestamp), "vehicle_id": vehicle_id},
+        UpdateExpression="SET " + ", ".join(updates),
+        ExpressionAttributeValues=values,
+    )
+
+
+def _occurrence_key(vehicle_id, violation_type, anchor_ts):
+    day_bucket = int(anchor_ts) // (24 * 60 * 60 * 1000)
+    return f"{vehicle_id}#{violation_type}#{day_bucket}"
+
+
+def _occurrence_key_with_bucket(vehicle_id, violation_type, anchor_ts, bucket_minutes):
+    bucket_ms = int(bucket_minutes) * 60 * 1000
+    bucket = int(anchor_ts) // bucket_ms
+    return f"{vehicle_id}#{violation_type}#{bucket}"
+
+
+def _minutes_to_ms(minutes):
+    return int(minutes) * 60 * 1000
+
+
+def _event_kind(event_type):
+    if not event_type:
+        return None
+    value = str(event_type).strip().lower()
+    if value.startswith("detection"):
+        return "detection"
+    if value.startswith("entry"):
+        return "entry"
+    if value.startswith("exit"):
+        return "exit"
+    return None
 
 
 def _invoke(function_name, payload):
@@ -112,22 +480,15 @@ def _invoke(function_name, payload):
 
 
 def _has_valid_permit(lambda_response):
-    """
-    permit-checker wraps permitStatus inside a JSON-encoded body string.
-    Treat any non-200 or missing/invalid permitStatus as not valid.
-    """
     if lambda_response.get("statusCode") != 200:
         return False
-
     body = lambda_response.get("body")
     if not body:
         return False
-
     try:
         body_json = json.loads(body) if isinstance(body, str) else body
     except json.JSONDecodeError:
         return False
-
     permit_status = str(body_json.get("permitStatus", "")).upper()
     return permit_status in {"VALID", "ACTIVE"}
 
@@ -150,3 +511,11 @@ def _to_float(value):
     if isinstance(value, Decimal):
         return float(value)
     return float(value)
+
+
+def _to_int(value):
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        return int(value)
+    return int(value)
