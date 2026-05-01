@@ -78,6 +78,26 @@ export const uploadImageToS3 = async (base64Image, fileName) => {
   }
 };
 
+export const getValidationBacklog = async (status = 'pending_review', limit = 50) => {
+  try {
+    const response = await api.get('/validation-backlog', { params: { status, limit } });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching validation backlog:', error);
+    throw error;
+  }
+};
+
+export const updateValidationReview = async (backlogId, { status, notes, reviewedBy }) => {
+  try {
+    const response = await api.put('/validation-backlog', { backlogId, status, notes, reviewedBy });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating validation review:', error);
+    throw error;
+  }
+};
+
 export const getCitationsByPlate = async (plateText) => {
   try {
     const response = await api.get('/get-citations', {

@@ -56,6 +56,13 @@ body {
   border-radius: 20px;
   font-size: 0.8rem;
   font-weight: bold;
+  color: white;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.user-badge:hover {
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .logout-button {

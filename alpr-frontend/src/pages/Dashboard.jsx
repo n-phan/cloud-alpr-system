@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import ImageUpload from '../components/ImageUpload';
-import PermitDashboard from '../components/PermitDashboard';
+import ValidationBacklog from '../components/ValidationBacklog';
 import EventLogStaff from '../components/EventLogStaff';
 import '../styles/Dashboard.css';
 
@@ -20,7 +20,7 @@ export default function Dashboard() {
           className={activeTab === 'lookup' ? 'active' : ''}
           onClick={() => setActiveTab('lookup')}
         >
-          Check Permit
+          Validation Backlog
         </button>
         <button
           className={activeTab === 'events' ? 'active' : ''}
@@ -32,7 +32,7 @@ export default function Dashboard() {
 
       <div className="tab-content">
         {activeTab === 'upload' && <ImageUpload />}
-        {activeTab === 'lookup' && <PermitDashboard />}
+        {activeTab === 'lookup' && <ValidationBacklog />}
         {activeTab === 'events' && <EventLogStaff />}
       </div>
     </div>
