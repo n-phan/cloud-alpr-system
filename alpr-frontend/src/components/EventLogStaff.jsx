@@ -103,13 +103,13 @@ export default function EventLogStaff() {
           <tbody>
             {filteredEvents.length > 0 ? (
               filteredEvents.map((event, idx) => (
-                <tr key={idx} className={`status-${event.permitStatus.toLowerCase()}`}>
+                <tr key={idx} className={`status-${(event.permitStatus || 'unknown').toLowerCase()}`}>
                   <td>{formatTime(event.timestamp)}</td>
                   <td>{event.vehicleId}</td>
                   <td>{event.plateText}</td>
                   <td>
-                    <span className={`status-badge ${event.permitStatus.toLowerCase()}`}>
-                      {event.permitStatus}
+                    <span className={`status-badge ${(event.permitStatus || 'unknown').toLowerCase()}`}>
+                      {event.permitStatus || '—'}
                     </span>
                   </td>
                   <td>{event.eventType}</td>
@@ -153,8 +153,8 @@ export default function EventLogStaff() {
               </div>
               <div className="event-detail-item">
                 <strong>Permit Status:</strong>
-                <span className={`status-badge ${selectedEvent.permitStatus.toLowerCase()}`}>
-                  {selectedEvent.permitStatus}
+                <span className={`status-badge ${(selectedEvent.permitStatus || 'unknown').toLowerCase()}`}>
+                  {selectedEvent.permitStatus || '—'}
                 </span>
               </div>
               <div className="event-detail-item">

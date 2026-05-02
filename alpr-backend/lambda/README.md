@@ -158,7 +158,32 @@ cat response.json
 
 ---
 
-### Function 6: validation-backlog-admin-handler (List Reviews)
+### Function 6: s3-uploader
+
+```bash
+cat > payload.json << 'EOF'
+{
+  "body": "{\"imageBase64\":\"<base64-encoded-image>\",\"fileName\":\"test.jpg\"}"
+}
+EOF
+
+aws lambda invoke \
+  --function-name s3-uploader \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://payload.json \
+  --region us-west-2 \
+  response.json
+
+cat response.json
+```
+
+**Expected**:
+- `statusCode`: 200
+- `imageUrl`: S3 URL of the uploaded image
+
+---
+
+### Function 7: validation-backlog-admin-handler (List Reviews)
 
 ```bash
 cat > payload.json << 'EOF'
@@ -182,7 +207,7 @@ cat response.json
 
 ---
 
-### Function 7: gateevents-stream-router
+### Function 8: gateevents-stream-router
 
 ```bash
 cat > payload.json << 'EOF'
@@ -233,7 +258,7 @@ cat response.json
 
 ---
 
-### Function 8: citation-create-handler
+### Function 9: citation-create-handler
 
 ```bash
 cat > payload.json << 'EOF'
@@ -266,6 +291,93 @@ cat response.json
 
 ---
 
+### Function 10: citation-lookup-handler
+
+```bash
+cat > payload.json << 'EOF'
+{"queryStringParameters":{"plateText":"ABC-1234"}}
+EOF
+
+aws lambda invoke \
+  --function-name citation-lookup-handler \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://payload.json \
+  --region us-west-2 \
+  response.json
+
+cat response.json
+```
+
+**Expected**:
+- `statusCode`: 200
+- Array of citation objects for the given plate, or an empty array
+
+---
+
+### Function 11: permit-admin-handler
+
+**List all permits (GET)**
+```bash
+cat > payload.json << 'EOF'
+{"httpMethod":"GET","queryStringParameters":{"limit":"10"}}
+EOF
+
+aws lambda invoke \
+  --function-name permit-admin-handler \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://payload.json \
+  --region us-west-2 \
+  response.json
+
+cat response.json
+```
+
+**Expected**: `statusCode` 200, `items` array of permits, `count`
+
+**Create a permit (POST)**
+```bash
+cat > payload.json << 'EOF'
+{
+  "httpMethod": "POST",
+  "body": "{\"vehicleId\":\"TEST-9999\",\"owner\":\"Test User\",\"expiryDate\":\"2026-12-31\"}"
+}
+EOF
+
+aws lambda invoke \
+  --function-name permit-admin-handler \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://payload.json \
+  --region us-west-2 \
+  response.json
+
+cat response.json
+```
+
+**Expected**: `statusCode` 201, `permit` object with `permitStatus: "VALID"`
+
+**Update a permit (PUT)**
+```bash
+cat > payload.json << 'EOF'
+{
+  "httpMethod": "PUT",
+  "body": "{\"vehicleId\":\"TEST-9999\",\"status\":\"REVOKED\"}"
+}
+EOF
+
+aws lambda invoke \
+  --function-name permit-admin-handler \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://payload.json \
+  --region us-west-2 \
+  response.json
+
+cat response.json
+```
+
+**Expected**: `statusCode` 200, updated `permit` object
+
+---
+
 ## Verify All Functions Deployed
 
 ```bash
@@ -278,12 +390,15 @@ aws lambda list-functions \
 You should see:
 - presigned-url-generator
 - permit-checker
+- permit-admin-handler
 - event-retriever
 - plate-submission-handler
 - validation-backlog-handler
 - validation-backlog-admin-handler
 - gateevents-stream-router
 - citation-create-handler
+- s3-uploader
+- citation-lookup-handler
 
 ---
 
@@ -294,11 +409,16 @@ You should see:
 - [ ] permit-checker returns 404 for INVALID-9999
 - [ ] event-retriever returns 200 with event array
 - [ ] plate-submission-handler returns 201
+- [ ] s3-uploader returns 200 with imageUrl
 - [ ] validation-backlog-handler returns 201 for low confidence
 - [ ] validation-backlog-admin-handler GET returns 200 with items
 - [ ] gateevents-stream-router routes records by confidence threshold
 - [ ] citation-create-handler returns 201 with citationId
-- [ ] All 8 functions appear in list-functions
+- [ ] citation-lookup-handler returns 200 with citations array
+- [ ] permit-admin-handler GET returns 200 with permits
+- [ ] permit-admin-handler POST returns 201 for new permit
+- [ ] permit-admin-handler PUT returns 200 for status update
+- [ ] All 11 functions appear in list-functions
 
 ---
 
