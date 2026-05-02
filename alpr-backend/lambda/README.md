@@ -399,6 +399,7 @@ You should see:
 - citation-create-handler
 - s3-uploader
 - citation-lookup-handler
+- citation-admin-handler
 
 ---
 
@@ -415,10 +416,12 @@ You should see:
 - [ ] gateevents-stream-router routes records by confidence threshold
 - [ ] citation-create-handler returns 201 with citationId
 - [ ] citation-lookup-handler returns 200 with citations array
+- [ ] citation-admin-handler GET returns 200 with items array
+- [ ] citation-admin-handler PUT returns 200 for status update
 - [ ] permit-admin-handler GET returns 200 with permits
 - [ ] permit-admin-handler POST returns 201 for new permit
 - [ ] permit-admin-handler PUT returns 200 for status update
-- [ ] All 11 functions appear in list-functions
+- [ ] All 12 functions appear in list-functions
 
 ---
 

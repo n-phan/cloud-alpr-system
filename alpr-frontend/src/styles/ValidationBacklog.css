@@ -282,6 +282,33 @@
   background: #a00;
 }
 
+.action-btn.cancel {
+  background: #e5e7eb;
+  color: #555;
+}
+
+.action-btn.cancel:hover:not(:disabled) {
+  background: #d1d5db;
+}
+
+.rereview-btn {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid #aaa;
+  color: #666;
+  padding: 0.3rem 0.85rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.rereview-btn:hover {
+  border-color: #555;
+  color: #333;
+}
+
 /* ── Status badge ── */
 
 .backlog-status-badge {
