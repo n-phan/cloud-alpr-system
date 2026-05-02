@@ -193,6 +193,71 @@ Resources:
           LIST_DEFAULT_LIMIT: "50"
           LIST_MAX_LIMIT: "200"
 
+  OrphanScanHandlerFunction:
+    Type: AWS::Serverless::Function
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: orphan-scan-handler
+      CodeUri: lambda/orphan-scan-handler/
+      Handler: handler.lambda_handler
+      Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
+      Timeout: 300
+      Environment:
+        Variables:
+          GATE_EVENTS_TABLE: GateEvents
+          GATE_EVENTS_PLATE_TEXT_INDEX: plate_text-timestamp-index
+          MATCHING_WINDOW_MINUTES: "240"
+          GRACE_PERIOD_MINUTES: "15"
+          ORPHAN_POLICY: review
+          PERMIT_CHECKER_FUNCTION: permit-checker
+          VALIDATION_BACKLOG_FUNCTION: validation-backlog-handler
+          CITATION_CREATE_FUNCTION: citation-create-handler
+
+  # ── EventBridge Scheduler: orphan scan ───────────────────────────────────────
+  # Scheduler assumes OrphanScanSchedulerRole when firing; the Lambda permission
+  # below allows scheduler.amazonaws.com to invoke the function.
+
+  OrphanScanSchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: alpr-orphan-scan-scheduler-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeOrphanScanLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt OrphanScanHandlerFunction.Arn
+
+  OrphanScanSchedulerPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt OrphanScanHandlerFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: scheduler.amazonaws.com
+      SourceArn: !Sub "arn:aws:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/*"
+
+  OrphanScanSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: alpr-orphan-scan
+      Description: Re-evaluates GateEvents stuck in waiting-for-counterpart after the matching window expires
+      ScheduleExpression: "rate(1 hour)"
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !GetAtt OrphanScanHandlerFunction.Arn
+        RoleArn: !GetAtt OrphanScanSchedulerRole.Arn
+        Input: "{}"
+
   # ── API Gateway: GET /get-citations ─────────────────────────────────────────
   # Only this route is managed here — existing routes were wired manually
   # and continue to work independently.
@@ -507,3 +572,7 @@ Outputs:
   AdminCitationsEndpoint:
     Description: Admin endpoint for citation management (GET/PUT)
     Value: !Sub "https://${ExistingApiId}.execute-api.${AWS::Region}.amazonaws.com/prod/admin-citations"
+
+  OrphanScanFunctionArn:
+    Description: ARN of the orphan-scan-handler Lambda (triggered hourly by EventBridge Scheduler)
+    Value: !GetAtt OrphanScanHandlerFunction.Arn

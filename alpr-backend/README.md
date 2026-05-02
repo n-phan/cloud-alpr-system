@@ -10,19 +10,18 @@ All `make` commands must be run from the `alpr-backend/` directory.
 ## Prerequisites
 
 - **AWS CLI** configured with credentials for the `us-west-2` region
-- **AWS SAM CLI** — installed via pip: `pip3 install aws-sam-cli`
-  - After install, add the SAM binary to your PATH:
-    ```bash
-    export PATH="$PATH:/Users/<your-username>/Library/Python/3.9/bin"
-    ```
-  - Add the line above to `~/.zshrc` to make it permanent
+- **AWS SAM CLI** — install via Homebrew (recommended on macOS):
+  ```bash
+  brew install aws-sam-cli
+  ```
+  > **macOS note:** A known libexpat symbol conflict between Homebrew Python 3.13 and the macOS system library can break `sam build`. The Makefile automatically works around this by preferring Homebrew's expat when it is present — no manual fix needed.
 - **Python 3** and `pip` available locally (used to bundle dependencies when packaging)
 
 ---
 
 ## Lambda Function Overview
 
-All 12 functions are defined in `template.yaml` and tracked by the `alpr-citations-stack`
+All 13 functions are defined in `template.yaml` and tracked by the `alpr-citations-stack`
 CloudFormation stack. Functions originally created manually were migrated into the stack via CloudFormation resource import.
 
 | Function | API Route |
@@ -39,6 +38,7 @@ CloudFormation stack. Functions originally created manually were migrated into t
 | `s3-uploader` | `POST /upload-image` |
 | `citation-lookup-handler` | `GET /get-citations` |
 | `citation-admin-handler` | `GET /admin-citations`, `PUT /admin-citations` |
+| `orphan-scan-handler` | — (EventBridge Scheduler trigger; resolves unmatched entry/exit events after matching window expires) |
 
 ---
 
@@ -137,17 +137,18 @@ Sends `lambda/<function-name>/test-payload.json` to Lambda and prints the respon
 
 ```
 alpr-backend/
-├── template.yaml          # SAM template — all Lambda functions + API Gateway resources
+├── template.yaml          # SAM template — all Lambda functions, API Gateway, and S3 bucket policy
 ├── samconfig.toml         # Persisted SAM deploy settings (stack name, region, S3 bucket)
 ├── Makefile               # Deploy, test, and log commands
-└── lambda/
-    ├── citation-lookup-handler/
-    │   ├── handler.py
-    │   ├── requirements.txt
-    │   └── test-payload.json
-    ├── permit-checker/
-    │   ├── handler.py
-    │   ├── requirements.txt
-    │   └── test-payload.json
-    └── ...                # All other functions follow the same structure
+├── lambda/
+│   ├── citation-lookup-handler/
+│   │   ├── handler.py
+│   │   ├── requirements.txt
+│   │   └── test-payload.json
+│   ├── permit-checker/
+│   │   ├── handler.py
+│   │   ├── requirements.txt
+│   │   └── test-payload.json
+│   └── ...                # All other functions follow the same structure
+└── ecs/                   # ECS worker — YOLO detection + Rekognition OCR pipeline
 ```

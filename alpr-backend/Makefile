@@ -2,6 +2,14 @@ REGION     := us-west-2
 STACK_NAME := alpr-citations-stack
 LAMBDA_DIR := lambda
 
+# Workaround: macOS ships an older libexpat that is missing a symbol required by
+# Homebrew's python@3.13 (used internally by aws-sam-cli). If Homebrew's expat is
+# installed, prefer it so `sam build` and `sam deploy` don't crash.
+HOMEBREW_EXPAT := /opt/homebrew/opt/expat/lib
+ifeq ($(shell test -d $(HOMEBREW_EXPAT) && echo yes),yes)
+  export DYLD_LIBRARY_PATH := $(HOMEBREW_EXPAT):$(DYLD_LIBRARY_PATH)
+endif
+
 # All functions are now managed by the SAM stack in template.yaml.
 # make deploy fn=<name>  — fast code-only update via update-function-code (skips CloudFormation)
 # make deploy-stack      — full SAM build + deploy (required for infrastructure changes)
@@ -37,7 +45,7 @@ deploy-stack: build
 	sam deploy \
 	  --stack-name $(STACK_NAME) \
 	  --region $(REGION) \
-	  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+	  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
 	  --resolve-s3 \
 	  --no-fail-on-empty-changeset
 
