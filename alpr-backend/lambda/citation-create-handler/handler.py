@@ -5,10 +5,14 @@ import uuid
 from decimal import Decimal
 
 import boto3
-from boto3.dynamodb.conditions import Attr
+from boto3.dynamodb.conditions import Key
 
 REGION = os.environ.get("AWS_REGION", "us-west-2")
 TABLE_NAME = os.environ.get("CITATIONS_TABLE", "Citations")
+# Citations GSI: partition key occurrence_key (no sort key required).
+OCCURRENCE_KEY_INDEX = os.environ.get(
+    "CITATIONS_OCCURRENCE_KEY_INDEX", "occurrence_key-index"
+)
 
 
 def _default_amount() -> Decimal:
@@ -52,10 +56,7 @@ def lambda_handler(event, context):
 
         occurrence_key = body.get("occurrenceKey")
         if occurrence_key:
-            existing = table.scan(
-                FilterExpression=Attr("occurrence_key").eq(occurrence_key),
-                Limit=1,
-            ).get("Items", [])
+            existing = _first_citation_by_occurrence_key(occurrence_key)
             if existing:
                 return {
                     "statusCode": 200,
@@ -63,7 +64,7 @@ def lambda_handler(event, context):
                         {
                             "message": "Citation already exists for occurrence",
                             "duplicate": True,
-                            "citationId": existing[0].get("citation_id"),
+                            "citationId": existing.get("citation_id"),
                             "occurrenceKey": occurrence_key,
                         }
                     ),
@@ -74,7 +75,7 @@ def lambda_handler(event, context):
                 }
 
         citation_id = body.get("citationId") or str(uuid.uuid4())
-        issued_at = int(body["issuedAt"]) if "issuedAt" in body else int(time.time() * 1000)
+        issued_at = int(body["issuedAt"]) if "issuedAt" in body else int(time.time())
 
         item = {
             "citation_id": citation_id,
@@ -123,6 +124,15 @@ def lambda_handler(event, context):
     except Exception as e:
         print(f"Error: {str(e)}")
         return error_response(500, "Internal server error")
+
+
+def _first_citation_by_occurrence_key(occurrence_key):
+    response = table.query(
+        IndexName=OCCURRENCE_KEY_INDEX,
+        KeyConditionExpression=Key("occurrence_key").eq(occurrence_key),
+    )
+    items = response.get("Items") or []
+    return items[0] if items else None
 
 
 def _http_method(event):

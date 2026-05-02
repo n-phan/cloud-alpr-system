@@ -4,7 +4,7 @@ import time
 from decimal import Decimal
 
 import boto3
-from boto3.dynamodb.conditions import Attr
+from boto3.dynamodb.conditions import Attr, Key
 
 THRESHOLD = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.7"))
 DETECTION_AUTO_CITATION_CONFIDENCE = float(
@@ -24,6 +24,8 @@ CITATION_CREATE_FUNCTION = os.environ.get(
     "CITATION_CREATE_FUNCTION", "citation-create-handler"
 )
 GATE_EVENTS_TABLE = os.environ.get("GATE_EVENTS_TABLE", "GateEvents")
+# Set to GSI name (PK plate_text, SK timestamp) to use Query; leave unset for paginated Scan.
+GATE_EVENTS_PLATE_TEXT_INDEX = os.environ.get("GATE_EVENTS_PLATE_TEXT_INDEX", "").strip()
 
 lambda_client = boto3.client("lambda")
 dynamodb = boto3.resource("dynamodb", region_name=os.environ.get("AWS_REGION", "us-west-2"))
@@ -91,6 +93,7 @@ def lambda_handler(event, context):
                 event_type=event_type_raw,
                 image_url=image_url,
                 notes="routed by two-lane flow: low-confidence review lane",
+                decision_lane="low-confidence-review",
             )
             routed_to_validation_backlog += 1
             _record_decision(
@@ -114,13 +117,14 @@ def lambda_handler(event, context):
                     event_type=event_type_raw,
                     image_url=image_url,
                     notes="detection confidence below auto-citation threshold; routed to review",
+                    decision_lane="low-confidence-detection",
                 )
                 routed_to_validation_backlog += 1
                 _record_decision(
                     ddb_vehicle_id=ddb_vehicle_id,
                     timestamp=event_ts,
                     decision_reason="detection-review-fallback",
-                    decision_lane="high-confidence-detection",
+                    decision_lane="low-confidence-detection",
                 )
                 continue
 
@@ -177,6 +181,7 @@ def lambda_handler(event, context):
                 event_type=event_type_raw,
                 image_url=image_url,
                 notes="unknown event direction/type; routed to review",
+                decision_lane="high-confidence-automated",
             )
             routed_to_validation_backlog += 1
             _record_decision(
@@ -197,8 +202,8 @@ def lambda_handler(event, context):
 
         # If no pair exists, wait within matching window.
         if counterpart is None:
-            age_ms = int(time.time() * 1000) - event_ts
-            if age_ms < _minutes_to_ms(MATCHING_WINDOW_MINUTES):
+            age_sec = int(time.time()) - event_ts
+            if age_sec < _minutes_to_seconds(MATCHING_WINDOW_MINUTES):
                 waiting_for_counterpart += 1
                 _record_decision(
                     ddb_vehicle_id=ddb_vehicle_id,
@@ -218,6 +223,7 @@ def lambda_handler(event, context):
                     event_type=event_type_raw,
                     image_url=image_url,
                     notes="orphan event routed for manual review",
+                    decision_lane="high-confidence-automated",
                 )
                 routed_to_validation_backlog += 1
                 _record_decision(
@@ -254,8 +260,8 @@ def lambda_handler(event, context):
             )
             continue
 
-        duration_ms = abs(event_ts - counterpart["timestamp"])
-        if duration_ms <= _minutes_to_ms(GRACE_PERIOD_MINUTES):
+        duration_sec = abs(event_ts - counterpart["timestamp"])
+        if duration_sec <= _minutes_to_seconds(GRACE_PERIOD_MINUTES):
             no_citation_grace_period += 1
             _record_decision(
                 ddb_vehicle_id=ddb_vehicle_id,
@@ -263,7 +269,7 @@ def lambda_handler(event, context):
                 decision_reason="grace-period",
                 decision_lane="high-confidence-automated",
                 counterpart_timestamp=counterpart["timestamp"],
-                duration_ms=duration_ms,
+                duration_seconds=duration_sec,
             )
             continue
 
@@ -280,7 +286,7 @@ def lambda_handler(event, context):
                 decision_reason="valid-permit",
                 decision_lane="high-confidence-automated",
                 counterpart_timestamp=counterpart["timestamp"],
-                duration_ms=duration_ms,
+                duration_seconds=abs(event_ts - counterpart["timestamp"]),
             )
             continue
 
@@ -308,7 +314,7 @@ def lambda_handler(event, context):
             decision_reason="invalid-permit-citation",
             decision_lane="high-confidence-automated",
             counterpart_timestamp=counterpart["timestamp"],
-            duration_ms=duration_ms,
+            duration_seconds=abs(event_ts - counterpart["timestamp"]),
             occurrence_key=occurrence_key,
         )
 
@@ -337,12 +343,14 @@ def lambda_handler(event, context):
     }
 
 
-def _route_to_backlog(vehicle_id, plate_text, confidence, permit_status, event_type, image_url, notes):
+def _route_to_backlog(
+    vehicle_id, plate_text, confidence, permit_status, event_type, image_url, notes, decision_lane
+):
     body = {
         "vehicleId": vehicle_id,
         "plateText": plate_text,
         "confidence": confidence,
-        "decisionLane": "low-confidence-review",
+        "decisionLane": decision_lane,
         "notes": notes,
     }
     if permit_status is not None:
@@ -381,13 +389,36 @@ def _create_citation(vehicle_id, plate_text, reason, occurrence_key, issued_by, 
 
 
 def _vehicle_events_for_pairing(normalized_plate, raw_plate):
-    expr = Attr("plate_text").eq(normalized_plate)
-    if raw_plate is not None:
-        trimmed = str(raw_plate).strip()
-        if trimmed and trimmed.upper() != normalized_plate:
-            expr = expr | Attr("plate_text").eq(trimmed)
-    response = gate_events_table.scan(FilterExpression=expr)
-    items = response.get("Items", [])
+    if GATE_EVENTS_PLATE_TEXT_INDEX:
+        plates = [normalized_plate]
+        if raw_plate is not None:
+            trimmed = str(raw_plate).strip()
+            if trimmed and trimmed.upper() != normalized_plate:
+                plates.append(trimmed)
+        seen = set()
+        items = []
+        for plate in plates:
+            for item in _query_gate_events_by_plate_text(plate, GATE_EVENTS_PLATE_TEXT_INDEX):
+                dedupe = (item.get("timestamp"), item.get("vehicle_id"))
+                if dedupe in seen:
+                    continue
+                seen.add(dedupe)
+                items.append(item)
+    else:
+        expr = Attr("plate_text").eq(normalized_plate)
+        if raw_plate is not None:
+            trimmed = str(raw_plate).strip()
+            if trimmed and trimmed.upper() != normalized_plate:
+                expr = expr | Attr("plate_text").eq(trimmed)
+        scan_kwargs = {"FilterExpression": expr}
+        items = []
+        while True:
+            response = gate_events_table.scan(**scan_kwargs)
+            items.extend(response.get("Items", []))
+            lek = response.get("LastEvaluatedKey")
+            if not lek:
+                break
+            scan_kwargs["ExclusiveStartKey"] = lek
     filtered = []
     for item in items:
         if _to_int(item.get("timestamp")) is None:
@@ -399,9 +430,26 @@ def _vehicle_events_for_pairing(normalized_plate, raw_plate):
     return filtered
 
 
+def _query_gate_events_by_plate_text(plate_text, index_name):
+    """Paginated Query on GSI: partition plate_text, sort timestamp."""
+    kwargs = {
+        "IndexName": index_name,
+        "KeyConditionExpression": Key("plate_text").eq(plate_text),
+    }
+    out = []
+    while True:
+        response = gate_events_table.query(**kwargs)
+        out.extend(response.get("Items", []))
+        lek = response.get("LastEvaluatedKey")
+        if not lek:
+            break
+        kwargs["ExclusiveStartKey"] = lek
+    return out
+
+
 def _find_counterpart(events, current_ts, current_direction):
     opposite = "exit" if current_direction == "entry" else "entry"
-    window_ms = _minutes_to_ms(MATCHING_WINDOW_MINUTES)
+    window_sec = _minutes_to_seconds(MATCHING_WINDOW_MINUTES)
     candidates = []
     for item in events:
         ts = _to_int(item.get("timestamp"))
@@ -409,7 +457,7 @@ def _find_counterpart(events, current_ts, current_direction):
             continue
         if _event_kind(item.get("event_type")) != opposite:
             continue
-        if abs(current_ts - ts) <= window_ms:
+        if abs(current_ts - ts) <= window_sec:
             candidates.append({"timestamp": ts})
     if not candidates:
         return None
@@ -422,21 +470,21 @@ def _record_decision(
     decision_reason,
     decision_lane,
     counterpart_timestamp=None,
-    duration_ms=None,
+    duration_seconds=None,
     occurrence_key=None,
 ):
     updates = ["decision_reason = :dr", "decision_lane = :dl", "decision_at = :da"]
     values = {
         ":dr": decision_reason,
         ":dl": decision_lane,
-        ":da": int(time.time() * 1000),
+        ":da": int(time.time()),
     }
     if counterpart_timestamp is not None:
         updates.append("counterpart_timestamp = :ct")
         values[":ct"] = int(counterpart_timestamp)
-    if duration_ms is not None:
-        updates.append("duration_ms = :du")
-        values[":du"] = int(duration_ms)
+    if duration_seconds is not None:
+        updates.append("duration_seconds = :du")
+        values[":du"] = int(duration_seconds)
     if occurrence_key is not None:
         updates.append("occurrence_key = :ok")
         values[":ok"] = occurrence_key
@@ -449,18 +497,18 @@ def _record_decision(
 
 
 def _occurrence_key(vehicle_id, violation_type, anchor_ts):
-    day_bucket = int(anchor_ts) // (24 * 60 * 60 * 1000)
+    day_bucket = int(anchor_ts) // (24 * 60 * 60)
     return f"{vehicle_id}#{violation_type}#{day_bucket}"
 
 
 def _occurrence_key_with_bucket(vehicle_id, violation_type, anchor_ts, bucket_minutes):
-    bucket_ms = int(bucket_minutes) * 60 * 1000
-    bucket = int(anchor_ts) // bucket_ms
+    bucket_sec = int(bucket_minutes) * 60
+    bucket = int(anchor_ts) // bucket_sec
     return f"{vehicle_id}#{violation_type}#{bucket}"
 
 
-def _minutes_to_ms(minutes):
-    return int(minutes) * 60 * 1000
+def _minutes_to_seconds(minutes):
+    return int(minutes) * 60
 
 
 def _event_kind(event_type):

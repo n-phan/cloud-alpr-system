@@ -114,6 +114,7 @@ Resources:
           VALIDATION_BACKLOG_FUNCTION: validation-backlog-handler
           CITATION_CREATE_FUNCTION: citation-create-handler
           GATE_EVENTS_TABLE: GateEvents
+          GATE_EVENTS_PLATE_TEXT_INDEX: plate_text-timestamp-index
 
   CitationCreateHandlerFunction:
     Type: AWS::Serverless::Function
@@ -127,6 +128,7 @@ Resources:
         Variables:
           CITATIONS_TABLE: Citations
           DEFAULT_CITATION_AMOUNT: "100"
+          CITATIONS_OCCURRENCE_KEY_INDEX: occurrence_key-index
 
   S3UploaderFunction:
     Type: AWS::Serverless::Function
