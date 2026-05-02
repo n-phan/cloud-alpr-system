@@ -1,0 +1,10 @@
+/samples/*.jpg
+/samples/*.png
+/samples/*.jpeg
+
+.venv
+# Ignore all result CSVs
+alpr_*_results_*.csv
+alpr_timestamp_results.csv
+
+!/samples/.gitkeep
