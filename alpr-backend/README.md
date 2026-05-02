@@ -22,17 +22,18 @@ All `make` commands must be run from the `alpr-backend/` directory.
 
 ## Lambda Function Overview
 
-All 10 functions are defined in `template.yaml` and tracked by the `alpr-citations-stack`
+All 11 functions are defined in `template.yaml` and tracked by the `alpr-citations-stack`
 CloudFormation stack. Functions originally created manually were migrated into the stack via CloudFormation resource import.
 
 | Function | API Route |
 |---|---|
 | `presigned-url-generator` | `POST /presigned-url` |
 | `permit-checker` | `GET /check-permit` |
+| `permit-admin-handler` | `GET /permits`, `POST /permits`, `PUT /permits` |
 | `event-retriever` | `GET /get-events` |
 | `plate-submission-handler` | `POST /submit-plate` |
-| `validation-backlog-handler` | — (internal) |
-| `validation-backlog-admin-handler` | — (internal) |
+| `validation-backlog-handler` | — (internal; queues low-confidence detections) |
+| `validation-backlog-admin-handler` | `GET /validation-backlog`, `PUT /validation-backlog` |
 | `gateevents-stream-router` | — (DynamoDB stream trigger; runs permit check and auto-creates citation when permit is invalid) |
 | `citation-create-handler` | `POST /citation` |
 | `s3-uploader` | `POST /upload-image` |

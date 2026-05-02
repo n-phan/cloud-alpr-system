@@ -47,9 +47,9 @@ S3 Upload → SQS Event → Worker → YOLO Detection → OCR → DynamoDB
 # Environment Variables
 
 ```bash
-AWS_REGION=us-east-1
-SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/...
-DYNAMODB_TABLE=vehicle-detections
+AWS_REGION=us-west-2
+SQS_QUEUE_URL=https://sqs.us-west-2.amazonaws.com/...
+DYNAMODB_TABLE=GateEvents
 ```
 
 ---
