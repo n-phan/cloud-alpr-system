@@ -5,9 +5,23 @@ import uuid
 from decimal import Decimal
 
 import boto3
+from boto3.dynamodb.conditions import Key
 
 REGION = os.environ.get("AWS_REGION", "us-west-2")
 TABLE_NAME = os.environ.get("CITATIONS_TABLE", "Citations")
+# Citations GSI: partition key occurrence_key (no sort key required).
+OCCURRENCE_KEY_INDEX = os.environ.get(
+    "CITATIONS_OCCURRENCE_KEY_INDEX", "occurrence_key-index"
+)
+
+
+def _default_amount() -> Decimal:
+    raw = os.environ.get("DEFAULT_CITATION_AMOUNT", "100")
+    try:
+        return Decimal(str(raw))
+    except Exception:
+        return Decimal("100")
+
 
 dynamodb = boto3.resource("dynamodb", region_name=REGION)
 table = dynamodb.Table(TABLE_NAME)
@@ -40,8 +54,28 @@ def lambda_handler(event, context):
             if field not in body:
                 return error_response(400, f"Missing required field: {field}")
 
+        occurrence_key = body.get("occurrenceKey")
+        if occurrence_key:
+            existing = _first_citation_by_occurrence_key(occurrence_key)
+            if existing:
+                return {
+                    "statusCode": 200,
+                    "body": json.dumps(
+                        {
+                            "message": "Citation already exists for occurrence",
+                            "duplicate": True,
+                            "citationId": existing.get("citation_id"),
+                            "occurrenceKey": occurrence_key,
+                        }
+                    ),
+                    "headers": {
+                        "Content-Type": "application/json",
+                        "Access-Control-Allow-Origin": "*",
+                    },
+                }
+
         citation_id = body.get("citationId") or str(uuid.uuid4())
-        issued_at = int(body["issuedAt"]) if "issuedAt" in body else int(time.time() * 1000)
+        issued_at = int(body["issuedAt"]) if "issuedAt" in body else int(time.time())
 
         item = {
             "citation_id": citation_id,
@@ -54,6 +88,8 @@ def lambda_handler(event, context):
 
         if "amount" in body:
             item["amount"] = Decimal(str(body["amount"]))
+        else:
+            item["amount"] = _default_amount()
         if "notes" in body:
             item["notes"] = body["notes"]
         if "imageUrl" in body:
@@ -62,6 +98,8 @@ def lambda_handler(event, context):
             item["related_backlog_id"] = body["relatedBacklogId"]
         if "issuedBy" in body:
             item["issued_by"] = body["issuedBy"]
+        if occurrence_key:
+            item["occurrence_key"] = occurrence_key
 
         table.put_item(Item=item)
 
@@ -72,6 +110,7 @@ def lambda_handler(event, context):
                     "message": "Citation created",
                     "citationId": citation_id,
                     "issuedAt": issued_at,
+                    "amount": str(item["amount"]),
                 }
             ),
             "headers": {
@@ -85,6 +124,15 @@ def lambda_handler(event, context):
     except Exception as e:
         print(f"Error: {str(e)}")
         return error_response(500, "Internal server error")
+
+
+def _first_citation_by_occurrence_key(occurrence_key):
+    response = table.query(
+        IndexName=OCCURRENCE_KEY_INDEX,
+        KeyConditionExpression=Key("occurrence_key").eq(occurrence_key),
+    )
+    items = response.get("Items") or []
+    return items[0] if items else None
 
 
 def _http_method(event):

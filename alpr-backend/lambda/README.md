@@ -48,7 +48,7 @@ cat response.json
 
 ---
 
-### Function 2: permit-checker (Invalid Vehicle)
+### Function 2b: permit-checker (Invalid Vehicle)
 
 ```bash
 cat > payload.json << 'EOF'
@@ -220,7 +220,8 @@ cat > payload.json << 'EOF'
           "vehicle_id": { "S": "LOW-TEST-STREAM" },
           "plate_text": { "S": "LOW-TEST-STREAM" },
           "confidence": { "N": "0.40" },
-          "event_type": { "S": "entry" }
+          "event_type": { "S": "entry" },
+          "timestamp": { "N": "1777672800001" }
         }
       }
     },
@@ -231,7 +232,8 @@ cat > payload.json << 'EOF'
           "vehicle_id": { "S": "HIGH-TEST-STREAM" },
           "plate_text": { "S": "HIGH-TEST-STREAM" },
           "confidence": { "N": "0.95" },
-          "event_type": { "S": "entry" }
+          "event_type": { "S": "entry" },
+          "timestamp": { "N": "1777672800002" }
         }
       }
     }
@@ -249,12 +251,14 @@ aws lambda invoke \
 cat response.json
 ```
 
-**Expected**:
+**Expected** (with default `ORPHAN_POLICY=review`, two stream records as above):
 - `statusCode`: 200
 - `processed`: 2
-- `routedToPermitChecker`: 1
-- `routedToValidationBacklog`: 1
-- `routedToCitationCreate`: 1 (when permit check is not valid)
+- `routedToValidationBacklog`: 1 (low-confidence record)
+- `waitingForCounterpart`: 1 (high-confidence entry alone; no matching exit yet)
+- `routedToPermitChecker` / `routedToCitationCreate`: depend on pairing, grace period, and permit outcome (see `lambda/gateevents-stream-router/response.json` for full counter list)
+
+`NewImage` must include `timestamp` (ms) along with `vehicle_id`, `plate_text`, `confidence`, and `event_type`, or the record is skipped (`skippedInvalidPayload`).
 
 ---
 
@@ -378,6 +382,78 @@ cat response.json
 
 ---
 
+### Function 12: citation-admin-handler
+
+**List all citations (GET)**
+```bash
+cat > payload.json << 'EOF'
+{"httpMethod":"GET","queryStringParameters":{"limit":"10"}}
+EOF
+
+aws lambda invoke \
+  --function-name citation-admin-handler \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://payload.json \
+  --region us-west-2 \
+  response.json
+
+cat response.json
+```
+
+**Expected**: `statusCode` 200, `items` array of citations, `count`
+
+**Update a citation status (PUT)**
+```bash
+cat > payload.json << 'EOF'
+{
+  "httpMethod": "PUT",
+  "body": "{\"citationId\":\"<citation-uuid>\",\"status\":\"PAID\",\"notes\":\"Paid via portal\"}"
+}
+EOF
+
+aws lambda invoke \
+  --function-name citation-admin-handler \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://payload.json \
+  --region us-west-2 \
+  response.json
+
+cat response.json
+```
+
+**Expected**: `statusCode` 200, updated `citation` object
+
+---
+
+### Function 13: orphan-scan-handler
+
+Triggered hourly by EventBridge Scheduler. Invoke manually to test:
+
+```bash
+cat > payload.json << 'EOF'
+{}
+EOF
+
+aws lambda invoke \
+  --function-name orphan-scan-handler \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://payload.json \
+  --region us-west-2 \
+  response.json
+
+cat response.json
+```
+
+**Expected**:
+- `statusCode`: 200
+- `scanned`: number of `waiting-for-counterpart` items older than `MATCHING_WINDOW_MINUTES`
+- `resolved`: number of items that were re-evaluated
+- `citationsCreated` / `routedToBacklog` / `skippedDuplicate`: outcome counts
+
+When run against a fresh table with no expired orphans, `scanned` and `resolved` will both be `0`.
+
+---
+
 ## Verify All Functions Deployed
 
 ```bash
@@ -400,6 +476,7 @@ You should see:
 - s3-uploader
 - citation-lookup-handler
 - citation-admin-handler
+- orphan-scan-handler
 
 ---
 
@@ -421,7 +498,8 @@ You should see:
 - [ ] permit-admin-handler GET returns 200 with permits
 - [ ] permit-admin-handler POST returns 201 for new permit
 - [ ] permit-admin-handler PUT returns 200 for status update
-- [ ] All 12 functions appear in list-functions
+- [ ] orphan-scan-handler returns 200 with scanned/resolved counts
+- [ ] All 13 functions appear in list-functions
 
 ---
 
