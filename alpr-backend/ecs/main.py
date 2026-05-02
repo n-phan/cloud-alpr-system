@@ -12,7 +12,6 @@ import numpy as np
 from ultralytics import YOLO
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from botocore.exceptions import ClientError
-
 # =========================
 # LOGGING
 # =========================
