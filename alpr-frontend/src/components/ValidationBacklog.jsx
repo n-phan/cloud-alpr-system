@@ -26,9 +26,10 @@ function ConfidenceBar({ value }) {
   );
 }
 
-function BacklogCard({ item, onAction }) {
+function BacklogCard({ item, onAction, isAdmin }) {
   const [notes, setNotes] = useState('');
   const [acting, setActing] = useState(false);
+  const [rereviewing, setRereviewing] = useState(false);
 
   const handleAction = async (status) => {
     setActing(true);
@@ -36,10 +37,17 @@ function BacklogCard({ item, onAction }) {
       await onAction(item.backlog_id, status, notes);
     } finally {
       setActing(false);
+      setRereviewing(false);
     }
   };
 
+  const handleOpenRereview = () => {
+    setNotes('');
+    setRereviewing(true);
+  };
+
   const isPending = item.status === 'pending_review';
+  const showActionPanel = isPending || rereviewing;
 
   return (
     <div className={`backlog-card status-${item.status}`}>
@@ -75,11 +83,11 @@ function BacklogCard({ item, onAction }) {
             <ConfidenceBar value={item.confidence} />
           </div>
 
-          {item.notes && !isPending && (
+          {item.notes && !showActionPanel && (
             <p className="backlog-notes-display"><span className="meta-label">Notes</span> {item.notes}</p>
           )}
 
-          {isPending && (
+          {showActionPanel && (
             <div className="backlog-actions">
               <textarea
                 className="backlog-notes-input"
@@ -104,8 +112,23 @@ function BacklogCard({ item, onAction }) {
                 >
                   {acting ? 'Saving…' : 'Reject'}
                 </button>
+                {rereviewing && (
+                  <button
+                    className="action-btn cancel"
+                    onClick={() => setRereviewing(false)}
+                    disabled={acting}
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
             </div>
+          )}
+
+          {!isPending && !rereviewing && isAdmin && (
+            <button className="rereview-btn" onClick={handleOpenRereview}>
+              Re-review
+            </button>
           )}
         </div>
       </div>
@@ -117,7 +140,7 @@ function BacklogCard({ item, onAction }) {
   );
 }
 
-export default function ValidationBacklog() {
+export default function ValidationBacklog({ isAdmin = false }) {
   const [items, setItems] = useState([]);
   const [statusFilter, setStatusFilter] = useState('pending_review');
   const [loading, setLoading] = useState(true);
@@ -175,7 +198,7 @@ export default function ValidationBacklog() {
 
       <div className="backlog-list">
         {items.map(item => (
-          <BacklogCard key={item.backlog_id} item={item} onAction={handleAction} />
+          <BacklogCard key={item.backlog_id} item={item} onAction={handleAction} isAdmin={isAdmin} />
         ))}
       </div>
     </div>

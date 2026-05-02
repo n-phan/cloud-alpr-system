@@ -1,0 +1,278 @@
+.citation-manager {
+  background: white;
+  border-radius: 8px;
+}
+
+.cm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.cm-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+/* Filter tabs */
+.cm-filter-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.cm-filter-tab {
+  padding: 0.4rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  background: white;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cm-filter-tab:hover {
+  border-color: #0066cc;
+  color: #0066cc;
+}
+
+.cm-filter-tab.active {
+  background: #0066cc;
+  border-color: #0066cc;
+  color: white;
+  font-weight: 600;
+}
+
+/* Buttons */
+.cm-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cm-btn--refresh {
+  background: #e8f0fe;
+  color: #0066cc;
+}
+
+.cm-btn--refresh:hover:not(:disabled) {
+  background: #cddcfb;
+}
+
+.cm-btn--refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Error */
+.cm-error {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #cc0000;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+/* Empty */
+.cm-empty {
+  text-align: center;
+  color: #aaa;
+  padding: 2rem;
+  font-size: 0.9rem;
+}
+
+/* Table */
+.cm-table-wrapper {
+  overflow-x: auto;
+}
+
+.cm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.cm-table thead th {
+  background: #f5f7fa;
+  padding: 0.7rem 0.9rem;
+  text-align: left;
+  font-size: 0.73rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #555;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.cm-table tbody td {
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+
+.cm-row--issued { background: #fffbf0; }
+.cm-row--paid { background: #f0fff8; }
+.cm-row--disputed { background: #fff5f0; }
+.cm-row--voided { background: #fafafa; }
+.cm-row--unknown { background: white; }
+.cm-row--editing { background: #f5f9ff !important; }
+
+.cm-monospace {
+  font-family: monospace;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* Status badge */
+.cm-badge {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cm-badge--issued {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.cm-badge--paid {
+  background: #d4f4dd;
+  color: #1a7f4b;
+}
+
+.cm-badge--disputed {
+  background: #fee2e2;
+  color: #cc0000;
+}
+
+.cm-badge--voided {
+  background: #e5e7eb;
+  color: #555;
+}
+
+.cm-badge--unknown {
+  background: #f3f4f6;
+  color: #888;
+}
+
+/* Row actions */
+.cm-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cm-action {
+  padding: 0.28rem 0.6rem;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.cm-action--edit {
+  background: #e8f0fe;
+  color: #0066cc;
+}
+
+.cm-action--edit:hover {
+  background: #cddcfb;
+}
+
+.cm-action--save {
+  background: #d4f4dd;
+  color: #1a7f4b;
+}
+
+.cm-action--save:hover:not(:disabled) {
+  background: #b6ecc8;
+}
+
+.cm-action--save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cm-action--cancel {
+  background: #e5e7eb;
+  color: #555;
+}
+
+.cm-action--cancel:hover:not(:disabled) {
+  background: #d1d5db;
+}
+
+/* Inline edit row */
+.cm-edit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 200px;
+}
+
+.cm-select {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #a0b9d8;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  outline: none;
+  background: white;
+  color: #333;
+  cursor: pointer;
+}
+
+.cm-select:focus {
+  border-color: #0066cc;
+}
+
+.cm-inline-input {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #a0b9d8;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.cm-inline-input:focus {
+  border-color: #0066cc;
+}
+
+.cm-edit-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* Notes indicator */
+.cm-notes-indicator {
+  font-size: 0.72rem;
+  color: #888;
+  background: #f3f4f6;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.cm-count {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: #888;
+}

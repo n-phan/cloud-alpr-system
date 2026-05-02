@@ -103,6 +103,7 @@ Three tabs:
 - Filter by status: Pending / Approved / Rejected
 - Each card shows the captured image, plate text, confidence bar, and metadata
 - Pending items can be approved or rejected with optional notes
+- Admin users can re-review already-approved or rejected items to correct a prior decision
 - Actioning a card removes it from the current view immediately
 
 **Recent Events**
@@ -113,9 +114,10 @@ Three tabs:
 
 ### Admin (`/admin`) — Admin only
 - Summary cards row showing Total Events, Valid Permits, Expired/Revoked, and Pending Validation (auto-refreshes every 30 s)
-- Two tabs:
+- Three tabs:
   - **Event Log** — full event table with Confidence column, filter by vehicle ID or plate
   - **Permit Management** — table of all permits with Activate/Revoke actions, inline editing of owner and expiry date, and an Add Permit form
+  - **Citations** — table of all citations with status filter (All / Issued / Paid / Disputed / Voided) and inline status update with optional notes
 - Header badge toggles between **Admin** (navigates to `/admin`) and **Dashboard** (navigates to `/dashboard`) depending on current page
 
 ---
@@ -131,6 +133,7 @@ src/
 │   ├── EventLogAdmin.jsx      — event table for admins (adds Confidence column)
 │   ├── AdminSummaryCards.jsx  — stat cards for the admin dashboard
 │   ├── PermitManager.jsx      — permit list with add, edit, activate, and revoke
+│   ├── CitationManager.jsx    — citation list with status filter and inline status update
 │   └── ProtectedRoute.jsx     — auth guard for protected routes
 ├── pages/
 │   ├── Citations.jsx          — public citation + permit lookup

@@ -154,6 +154,20 @@ Resources:
         Variables:
           PERMITS_TABLE: Permits
 
+  CitationAdminHandlerFunction:
+    Type: AWS::Serverless::Function
+    DeletionPolicy: Retain
+    Properties:
+      FunctionName: citation-admin-handler
+      CodeUri: lambda/citation-admin-handler/
+      Handler: handler.lambda_handler
+      Role: arn:aws:iam::160885262272:role/ALPRLambdaExecutionRole
+      Environment:
+        Variables:
+          CITATIONS_TABLE: Citations
+          LIST_DEFAULT_LIMIT: "50"
+          LIST_MAX_LIMIT: "200"
+
   # ── API Gateway: GET /get-citations ─────────────────────────────────────────
   # Only this route is managed here — existing routes were wired manually
   # and continue to work independently.
@@ -363,6 +377,75 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingApiId}/*/*/permits"
 
+  # ── API Gateway: GET+PUT /admin-citations ──────────────────────────────────
+
+  AdminCitationsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ExistingApiId
+      ParentId: !Ref ExistingApiRootResourceId
+      PathPart: admin-citations
+
+  AdminCitationsGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ExistingApiId
+      ResourceId: !Ref AdminCitationsResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub >-
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CitationAdminHandlerFunction.Arn}/invocations
+
+  AdminCitationsPutMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ExistingApiId
+      ResourceId: !Ref AdminCitationsResource
+      HttpMethod: PUT
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub >-
+          arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CitationAdminHandlerFunction.Arn}/invocations
+
+  AdminCitationsOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ExistingApiId
+      ResourceId: !Ref AdminCitationsResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: '204'
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,PUT,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+      MethodResponses:
+        - StatusCode: '204'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  CitationAdminApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt CitationAdminHandlerFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingApiId}/*/*/admin-citations"
+
   ApiRedeployment:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
@@ -375,10 +458,13 @@ Resources:
       - PermitsPostMethod
       - PermitsPutMethod
       - PermitsOptionsMethod
+      - AdminCitationsGetMethod
+      - AdminCitationsPutMethod
+      - AdminCitationsOptionsMethod
     Properties:
       RestApiId: !Ref ExistingApiId
       StageName: prod
-      Description: !Sub "Deployed by SAM stack ${AWS::StackName} — routes: get-citations, validation-backlog, permits"
+      Description: !Sub "Deployed by SAM stack ${AWS::StackName} — routes: get-citations, validation-backlog, permits, admin-citations"
 
 Outputs:
   CitationLookupFunctionArn:
@@ -392,3 +478,7 @@ Outputs:
   PermitsEndpoint:
     Description: Public endpoint for permit management (GET/POST/PUT)
     Value: !Sub "https://${ExistingApiId}.execute-api.${AWS::Region}.amazonaws.com/prod/permits"
+
+  AdminCitationsEndpoint:
+    Description: Admin endpoint for citation management (GET/PUT)
+    Value: !Sub "https://${ExistingApiId}.execute-api.${AWS::Region}.amazonaws.com/prod/admin-citations"
