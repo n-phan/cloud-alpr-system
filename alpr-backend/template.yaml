@@ -24,6 +24,22 @@ Globals:
 
 Resources:
 
+  # ── S3 bucket policy ─────────────────────────────────────────────────────────
+
+  IngressBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DeletionPolicy: Retain
+    Properties:
+      Bucket: alpr-ingress-cmpe281
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: arn:aws:s3:::alpr-ingress-cmpe281/*
+
   # ── Lambda functions ─────────────────────────────────────────────────────────
   # DeletionPolicy: Retain on all functions prevents accidental deletion
   # if the CloudFormation stack is ever torn down.
