@@ -23,8 +23,8 @@ def lambda_handler(event, context):
             if field not in body:
                 return error_response(400, f'Missing required field: {field}')
         
-        # Generate timestamp (milliseconds)
-        timestamp = int(time.time() * 1000)
+        # Generate timestamp (Unix epoch seconds)
+        timestamp = int(time.time())
         ttl = int(time.time()) + (30 * 86400)  # 30 days from now
         
         # Prepare item for DynamoDB (use Decimal for numbers)

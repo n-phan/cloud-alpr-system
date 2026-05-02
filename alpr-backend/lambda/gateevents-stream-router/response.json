@@ -1,8 +1,23 @@
 {
   "statusCode": 200,
   "processed": 2,
+  "skippedInvalidPayload": 0,
+  "highConfidenceLaneEvents": 1,
+  "lowConfidenceLaneEvents": 1,
   "routedToPermitChecker": 1,
   "routedToValidationBacklog": 1,
   "routedToCitationCreate": 1,
-  "threshold": 0.7
+  "skippedDuplicateCitation": 0,
+  "noCitationGracePeriod": 0,
+  "noCitationValidPermit": 0,
+  "waitingForCounterpart": 0,
+  "orphanDecisions": 0,
+  "detectionEvents": 1,
+  "detectionReviewFallback": 0,
+  "threshold": 0.7,
+  "detectionAutoCitationConfidence": 0.7,
+  "detectionIdempotencyBucketMinutes": 15,
+  "gracePeriodMinutes": 15,
+  "matchingWindowMinutes": 60,
+  "orphanPolicy": "review"
 }

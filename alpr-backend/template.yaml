@@ -121,9 +121,16 @@ Resources:
       Environment:
         Variables:
           CONFIDENCE_THRESHOLD: "0.7"
+          DETECTION_AUTO_CITATION_CONFIDENCE: "0.7"
+          DETECTION_IDEMPOTENCY_BUCKET_MINUTES: "15"
+          GRACE_PERIOD_MINUTES: "15"
+          MATCHING_WINDOW_MINUTES: "240"
+          ORPHAN_POLICY: "review"
           PERMIT_CHECKER_FUNCTION: permit-checker
           VALIDATION_BACKLOG_FUNCTION: validation-backlog-handler
           CITATION_CREATE_FUNCTION: citation-create-handler
+          GATE_EVENTS_TABLE: GateEvents
+          GATE_EVENTS_PLATE_TEXT_INDEX: plate_text-timestamp-index
 
   CitationCreateHandlerFunction:
     Type: AWS::Serverless::Function
@@ -136,6 +143,8 @@ Resources:
       Environment:
         Variables:
           CITATIONS_TABLE: Citations
+          DEFAULT_CITATION_AMOUNT: "100"
+          CITATIONS_OCCURRENCE_KEY_INDEX: occurrence_key-index
 
   S3UploaderFunction:
     Type: AWS::Serverless::Function
