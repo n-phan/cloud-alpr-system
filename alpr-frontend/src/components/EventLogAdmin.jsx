@@ -102,14 +102,14 @@ export default function EventLogAdmin() {
           <tbody>
             {filteredEvents.length > 0 ? (
               filteredEvents.map((event, idx) => (
-                <tr key={idx} className={`status-${event.permitStatus.toLowerCase()}`}>
+                <tr key={idx} className={`status-${(event.permitStatus || 'unknown').toLowerCase()}`}>
                   <td>{formatTime(event.timestamp)}</td>
                   <td>{event.vehicleId}</td>
                   <td>{event.plateText}</td>
                   <td>{(event.confidence * 100).toFixed(1)}%</td>
                   <td>
-                    <span className={`status-badge ${event.permitStatus.toLowerCase()}`}>
-                      {event.permitStatus}
+                    <span className={`status-badge ${(event.permitStatus || 'unknown').toLowerCase()}`}>
+                      {event.permitStatus || '—'}
                     </span>
                   </td>
                   <td>{event.eventType}</td>
