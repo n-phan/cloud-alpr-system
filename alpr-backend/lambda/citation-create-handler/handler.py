@@ -20,7 +20,8 @@ def _default_amount() -> Decimal:
 
 
 def _citation_id_for_occurrence(occurrence_key: str) -> str:
-    # Deterministic ID lets a conditional put enforce one citation per occurrence.
+    # Deterministic ID + conditional put enforces "one citation per occurrence"
+    # under concurrency without relying on an occurrence_key GSI pre-check query.
     return str(uuid.uuid5(uuid.NAMESPACE_URL, f"occurrence:{occurrence_key}"))
 
 
@@ -85,11 +86,15 @@ def lambda_handler(event, context):
         if "issuedBy" in body:
             item["issued_by"] = body["issuedBy"]
         if occurrence_key:
+            # Keep occurrence_key as a query/reporting attribute. Any optional
+            # occurrence_key-index is for lookup convenience, not write-time dedupe.
             item["occurrence_key"] = occurrence_key
 
         try:
             table.put_item(
                 Item=item,
+                # Atomic guardrail: if the deterministic citation_id already exists,
+                # this write fails and we return duplicate=True below.
                 ConditionExpression="attribute_not_exists(citation_id)",
             )
         except ClientError as e:
