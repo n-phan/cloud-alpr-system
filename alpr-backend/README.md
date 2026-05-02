@@ -22,7 +22,7 @@ All `make` commands must be run from the `alpr-backend/` directory.
 
 ## Lambda Function Overview
 
-All 11 functions are defined in `template.yaml` and tracked by the `alpr-citations-stack`
+All 12 functions are defined in `template.yaml` and tracked by the `alpr-citations-stack`
 CloudFormation stack. Functions originally created manually were migrated into the stack via CloudFormation resource import.
 
 | Function | API Route |
@@ -38,6 +38,7 @@ CloudFormation stack. Functions originally created manually were migrated into t
 | `citation-create-handler` | `POST /citation` |
 | `s3-uploader` | `POST /upload-image` |
 | `citation-lookup-handler` | `GET /get-citations` |
+| `citation-admin-handler` | `GET /admin-citations`, `PUT /admin-citations` |
 
 ---
 

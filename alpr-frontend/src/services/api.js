@@ -147,4 +147,30 @@ export const getCitationsByPlate = async (plateText) => {
   }
 };
 
+export const getAllCitations = async (status = null, limit = 50) => {
+  try {
+    const params = { limit };
+    if (status) params.status = status;
+    const response = await api.get('/admin-citations', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching all citations:', error);
+    throw error;
+  }
+};
+
+export const updateCitation = async (citationId, { status, notes, processedBy }) => {
+  try {
+    const payload = { citationId };
+    if (status) payload.status = status;
+    if (notes?.trim()) payload.notes = notes.trim();
+    if (processedBy) payload.processedBy = processedBy;
+    const response = await api.put('/admin-citations', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating citation:', error);
+    throw error;
+  }
+};
+
 export default api;

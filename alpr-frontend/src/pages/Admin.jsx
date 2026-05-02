@@ -2,11 +2,13 @@ import { useState } from 'react';
 import AdminSummaryCards from '../components/AdminSummaryCards';
 import EventLogAdmin from '../components/EventLogAdmin';
 import PermitManager from '../components/PermitManager';
+import CitationManager from '../components/CitationManager';
 import '../styles/Admin.css';
 
 const TABS = [
   { id: 'events', label: 'Event Log' },
   { id: 'permits', label: 'Permit Management' },
+  { id: 'citations', label: 'Citations' },
 ];
 
 export default function Admin() {
@@ -36,6 +38,7 @@ export default function Admin() {
       <div className="admin-tab-content">
         {activeTab === 'events' && <EventLogAdmin />}
         {activeTab === 'permits' && <PermitManager />}
+        {activeTab === 'citations' && <CitationManager />}
       </div>
     </div>
   );
