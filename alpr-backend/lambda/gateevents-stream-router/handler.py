@@ -32,6 +32,10 @@ dynamodb = boto3.resource("dynamodb", region_name=os.environ.get("AWS_REGION", "
 gate_events_table = dynamodb.Table(GATE_EVENTS_TABLE)
 
 
+class DownstreamLambdaError(RuntimeError):
+    pass
+
+
 def lambda_handler(event, context):
     processed = 0
     skipped_invalid_payload = 0
@@ -131,6 +135,7 @@ def lambda_handler(event, context):
             permit_check_response = _invoke(
                 PERMIT_CHECKER_FUNCTION,
                 {"queryStringParameters": {"vehicleId": vehicle_id}},
+                expected_payload_statuses={200, 404},
             )
             routed_to_permit_checker += 1
 
@@ -276,6 +281,7 @@ def lambda_handler(event, context):
         permit_check_response = _invoke(
             PERMIT_CHECKER_FUNCTION,
             {"queryStringParameters": {"vehicleId": vehicle_id}},
+            expected_payload_statuses={200, 404},
         )
         routed_to_permit_checker += 1
         if _has_valid_permit(permit_check_response):
@@ -359,7 +365,11 @@ def _route_to_backlog(
         body["eventType"] = event_type
     if image_url is not None:
         body["imageUrl"] = image_url
-    _invoke(VALIDATION_BACKLOG_FUNCTION, {"body": json.dumps(body)})
+    _invoke(
+        VALIDATION_BACKLOG_FUNCTION,
+        {"body": json.dumps(body)},
+        require_payload_2xx=True,
+    )
 
 
 def _create_citation(vehicle_id, plate_text, reason, occurrence_key, issued_by, related_event_ts):
@@ -379,6 +389,7 @@ def _create_citation(vehicle_id, plate_text, reason, occurrence_key, issued_by, 
                 }
             ),
         },
+        require_payload_2xx=True,
     )
     body = response.get("body")
     try:
@@ -524,7 +535,12 @@ def _event_kind(event_type):
     return None
 
 
-def _invoke(function_name, payload):
+def _invoke(
+    function_name,
+    payload,
+    require_payload_2xx=False,
+    expected_payload_statuses=None,
+):
     resp = lambda_client.invoke(
         FunctionName=function_name,
         InvocationType="RequestResponse",
@@ -532,14 +548,51 @@ def _invoke(function_name, payload):
     )
     status_code = resp.get("StatusCode", 0)
     if status_code < 200 or status_code >= 300:
-        raise RuntimeError(f"Invoke failed for {function_name}: {status_code}")
+        raise DownstreamLambdaError(
+            f"Invoke transport failed for {function_name}: status={status_code}"
+        )
     payload_stream = resp.get("Payload")
     if payload_stream is None:
         return {}
     raw = payload_stream.read()
     if not raw:
         return {}
-    return json.loads(raw.decode("utf-8"))
+    try:
+        payload_data = json.loads(raw.decode("utf-8"))
+    except json.JSONDecodeError as e:
+        raise DownstreamLambdaError(
+            f"Invoke payload was not valid JSON for {function_name}"
+        ) from e
+
+    function_error = resp.get("FunctionError")
+    if function_error:
+        raise DownstreamLambdaError(
+            f"Invoked function errored for {function_name}: "
+            f"{function_error}; payload={payload_data}"
+        )
+
+    payload_status = None
+    if isinstance(payload_data, dict) and "statusCode" in payload_data:
+        try:
+            payload_status = int(payload_data["statusCode"])
+        except (TypeError, ValueError):
+            raise DownstreamLambdaError(
+                f"Invalid payload statusCode for {function_name}: "
+                f"{payload_data.get('statusCode')}"
+            )
+
+    if expected_payload_statuses is not None and payload_status is not None:
+        if payload_status not in expected_payload_statuses:
+            raise DownstreamLambdaError(
+                f"Unexpected payload status for {function_name}: {payload_status}"
+            )
+    elif require_payload_2xx and payload_status is not None:
+        if payload_status < 200 or payload_status >= 300:
+            raise DownstreamLambdaError(
+                f"Non-2xx payload status for {function_name}: {payload_status}"
+            )
+
+    return payload_data
 
 
 def _has_valid_permit(lambda_response):
