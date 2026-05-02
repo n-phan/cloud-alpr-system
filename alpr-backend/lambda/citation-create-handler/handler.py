@@ -5,14 +5,10 @@ import uuid
 from decimal import Decimal
 
 import boto3
-from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
 
 REGION = os.environ.get("AWS_REGION", "us-west-2")
 TABLE_NAME = os.environ.get("CITATIONS_TABLE", "Citations")
-# Citations GSI: partition key occurrence_key (no sort key required).
-OCCURRENCE_KEY_INDEX = os.environ.get(
-    "CITATIONS_OCCURRENCE_KEY_INDEX", "occurrence_key-index"
-)
 
 
 def _default_amount() -> Decimal:
@@ -21,6 +17,11 @@ def _default_amount() -> Decimal:
         return Decimal(str(raw))
     except Exception:
         return Decimal("100")
+
+
+def _citation_id_for_occurrence(occurrence_key: str) -> str:
+    # Deterministic ID lets a conditional put enforce one citation per occurrence.
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, f"occurrence:{occurrence_key}"))
 
 
 dynamodb = boto3.resource("dynamodb", region_name=REGION)
@@ -55,26 +56,11 @@ def lambda_handler(event, context):
                 return error_response(400, f"Missing required field: {field}")
 
         occurrence_key = body.get("occurrenceKey")
-        if occurrence_key:
-            existing = _first_citation_by_occurrence_key(occurrence_key)
-            if existing:
-                return {
-                    "statusCode": 200,
-                    "body": json.dumps(
-                        {
-                            "message": "Citation already exists for occurrence",
-                            "duplicate": True,
-                            "citationId": existing.get("citation_id"),
-                            "occurrenceKey": occurrence_key,
-                        }
-                    ),
-                    "headers": {
-                        "Content-Type": "application/json",
-                        "Access-Control-Allow-Origin": "*",
-                    },
-                }
-
-        citation_id = body.get("citationId") or str(uuid.uuid4())
+        citation_id = (
+            _citation_id_for_occurrence(occurrence_key)
+            if occurrence_key
+            else (body.get("citationId") or str(uuid.uuid4()))
+        )
         issued_at = int(body["issuedAt"]) if "issuedAt" in body else int(time.time())
 
         item = {
@@ -101,7 +87,32 @@ def lambda_handler(event, context):
         if occurrence_key:
             item["occurrence_key"] = occurrence_key
 
-        table.put_item(Item=item)
+        try:
+            table.put_item(
+                Item=item,
+                ConditionExpression="attribute_not_exists(citation_id)",
+            )
+        except ClientError as e:
+            code = (e.response.get("Error") or {}).get("Code")
+            if code == "ConditionalCheckFailedException":
+                if occurrence_key:
+                    return {
+                        "statusCode": 200,
+                        "body": json.dumps(
+                            {
+                                "message": "Citation already exists for occurrence",
+                                "duplicate": True,
+                                "citationId": citation_id,
+                                "occurrenceKey": occurrence_key,
+                            }
+                        ),
+                        "headers": {
+                            "Content-Type": "application/json",
+                            "Access-Control-Allow-Origin": "*",
+                        },
+                    }
+                return error_response(409, "Citation ID already exists")
+            raise
 
         return {
             "statusCode": 201,
@@ -124,15 +135,6 @@ def lambda_handler(event, context):
     except Exception as e:
         print(f"Error: {str(e)}")
         return error_response(500, "Internal server error")
-
-
-def _first_citation_by_occurrence_key(occurrence_key):
-    response = table.query(
-        IndexName=OCCURRENCE_KEY_INDEX,
-        KeyConditionExpression=Key("occurrence_key").eq(occurrence_key),
-    )
-    items = response.get("Items") or []
-    return items[0] if items else None
 
 
 def _http_method(event):
