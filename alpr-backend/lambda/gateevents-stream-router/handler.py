@@ -139,7 +139,12 @@ def lambda_handler(event, context):
             )
             routed_to_permit_checker += 1
 
-            if _has_valid_permit(permit_check_response):
+            permit_decision = _permit_decision(permit_check_response)
+            if permit_decision == "unknown":
+                raise DownstreamLambdaError(
+                    "Permit-checker returned indeterminate result for detection path"
+                )
+            if permit_decision == "valid":
                 no_citation_valid_permit += 1
                 _record_decision(
                     ddb_vehicle_id=ddb_vehicle_id,
@@ -284,7 +289,12 @@ def lambda_handler(event, context):
             expected_payload_statuses={200, 404},
         )
         routed_to_permit_checker += 1
-        if _has_valid_permit(permit_check_response):
+        permit_decision = _permit_decision(permit_check_response)
+        if permit_decision == "unknown":
+            raise DownstreamLambdaError(
+                "Permit-checker returned indeterminate result for paired-event path"
+            )
+        if permit_decision == "valid":
             no_citation_valid_permit += 1
             _record_decision(
                 ddb_vehicle_id=ddb_vehicle_id,
@@ -595,18 +605,27 @@ def _invoke(
     return payload_data
 
 
-def _has_valid_permit(lambda_response):
-    if lambda_response.get("statusCode") != 200:
-        return False
+def _permit_decision(lambda_response):
+    """Classify permit-checker result as valid, invalid, or unknown."""
+    status_code = lambda_response.get("statusCode")
+    if status_code == 404:
+        return "invalid"
+    if status_code != 200:
+        return "unknown"
+
     body = lambda_response.get("body")
     if not body:
-        return False
+        return "unknown"
     try:
         body_json = json.loads(body) if isinstance(body, str) else body
     except json.JSONDecodeError:
-        return False
+        return "unknown"
     permit_status = str(body_json.get("permitStatus", "")).upper()
-    return permit_status in {"VALID", "ACTIVE"}
+    if permit_status in {"VALID", "ACTIVE"}:
+        return "valid"
+    if permit_status:
+        return "invalid"
+    return "unknown"
 
 
 def _normalize_plate(value):
