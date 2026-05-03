@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import ImageUpload from '../components/ImageUpload';
 import ValidationBacklog from '../components/ValidationBacklog';
-import EventLogStaff from '../components/EventLogStaff';
+import EventLog from '../components/EventLog';
 import '../styles/Dashboard.css';
 
 export default function Dashboard({ isAdmin = false }) {
@@ -33,7 +33,7 @@ export default function Dashboard({ isAdmin = false }) {
       <div className="tab-content">
         {activeTab === 'upload' && <ImageUpload />}
         {activeTab === 'lookup' && <ValidationBacklog isAdmin={isAdmin} />}
-        {activeTab === 'events' && <EventLogStaff />}
+        {activeTab === 'events' && <EventLog />}
       </div>
     </div>
   );
