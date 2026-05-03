@@ -1,0 +1,49 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CloudFormationDeploy",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateChangeSet",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:DescribeChangeSet",
+        "cloudformation:DeleteChangeSet",
+        "cloudformation:DescribeStacks",
+        "cloudformation:GetTemplateSummary",
+        "cloudformation:ListStackResources"
+      ],
+      "Resource": [
+        "arn:aws:cloudformation:us-west-2:160885262272:stack/alpr-citations-stack/*",
+        "arn:aws:cloudformation:us-west-2:aws:transform/Serverless-2016-10-31"
+      ]
+    },
+    {
+      "Sid": "SAMDeploymentBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::aws-sam-cli-managed-default-samclisourcebucket-w3a63vzitgsi",
+        "arn:aws:s3:::aws-sam-cli-managed-default-samclisourcebucket-w3a63vzitgsi/*"
+      ]
+    },
+    {
+      "Sid": "IAMPassRoleForStack",
+      "Effect": "Allow",
+      "Action": [
+        "iam:PassRole",
+        "iam:GetRole"
+      ],
+      "Resource": "arn:aws:iam::160885262272:role/*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "cloudformation.amazonaws.com"
+        }
+      }
+    }
+  ]
+}
