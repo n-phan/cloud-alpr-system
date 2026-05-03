@@ -12,6 +12,9 @@ import numpy as np
 from ultralytics import YOLO
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from botocore.exceptions import ClientError
+
+from dotenv import load_dotenv
+load_dotenv()
 # =========================
 # LOGGING
 # =========================
@@ -63,24 +66,48 @@ except Exception as e:
 # LOGIC FUNCTIONS
 # =========================
 
+def extract_best_line(response):
+    lines = [item for item in response.get("TextDetections", []) if item["Type"] == "LINE"]
+    
+    if not lines:
+        return None, 0.0
+
+    # Sort by height/area to find the most prominent text
+    # Texas plates have 'TEXAS' at the top, which might have a large area.
+    # We want the text that is most likely the plate (usually middle-center).
+    lines.sort(key=lambda x: x["Geometry"]["BoundingBox"]["Height"], reverse=True)
+    
+    # Take the tallest LINE, but if there are multiple lines with similar height
+    # located in the center, we may need to join them. 
+    best_item = lines[0]
+    return best_item["DetectedText"], best_item["Confidence"]
+
 def detect_largest_text_rekognition(image_bytes):
     try:
+        # Step 1: Detect on the RAW image first.
+        # This prevents preprocessing from washing out the 'A' or '1'.
         response = rekognition.detect_text(Image={"Bytes": image_bytes})
-        best_text, best_area = None, 0
+        text, conf = extract_best_line(response)
 
-        for item in response.get("TextDetections", []):
-            if item["Type"] != "WORD":
-                continue
-            
-            box = item["Geometry"]["BoundingBox"]
-            area = box["Width"] * box["Height"]
-            if area > best_area:
-                best_area = area
-                best_text = item["DetectedText"]
-        return best_text
-    except ClientError as e:
-        logger.error(f"Rekognition API error: {e}")
-        return None
+        # Step 2: If the text looks too short (e.g., fewer than 5 characters), 
+        # try again with light padding to help the OCR see the edges.
+        if not text or len(text) < 5:
+            np_arr = np.frombuffer(image_bytes, np.uint8)
+            img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            if img is not None:
+                h, w = img.shape[:2]
+                # White padding is better for light plates
+                pad = int(min(h, w) * 0.15)
+                img = cv2.copyMakeBorder(img, pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=[255, 255, 255])
+                _, buffer = cv2.imencode(".jpg", img)
+                
+                response = rekognition.detect_text(Image={"Bytes": buffer.tobytes()})
+                text, conf = extract_best_line(response)
+
+        return text, conf
+    except Exception as e:
+        logger.error(f"Rekognition error: {e}")
+        return None, 0.0
 
 def load_image_from_s3(bucket, key):
     try:
@@ -94,24 +121,41 @@ def load_image_from_s3(bucket, key):
     except Exception as e:
         logger.error(f"S3 Load Error for {key}: {e}")
         return None
+    
+def sanitize_for_dynamodb(data):
+    if isinstance(data, list):
+        return [sanitize_for_dynamodb(item) for item in data]
+    if isinstance(data, dict):
+        return {k: sanitize_for_dynamodb(v) for k, v in data.items()}
+    if isinstance(data, (float, np.float32, np.float64)):
+        return Decimal(str(data))
+    return data
 
-def write_result(vehicle_id, conf, plate_text, image_url, event_type="DETECTION", permit_status="UNKNOWN"):
+def write_result(vehicle_id, conf, plate_text, image_url, event_type="DETECTION", permit_status="UNKNOWN", ocr_conf=0.0):
     try:
         timestamp = int(time.time())
-        item = {
+        # Build the initial dictionary
+        raw_item = {
             "timestamp": timestamp,
             "vehicle_id": vehicle_id,
-            "confidence": Decimal(str(round(conf, 4))),
+            "confidence": conf,
+            "ocr_confidence": ocr_conf,
             "event_type": event_type,
             "permit_status": permit_status,
             "plate_text": plate_text if plate_text else "UNKNOWN",
             "image_url": image_url,
             "ttl": timestamp + TTL_SECONDS
         }
+
+        # Use the sanitize function to convert all floats/numpy types to Decimals
+        item = sanitize_for_dynamodb(raw_item)
+
         table.put_item(Item=item)
+        logger.info(f"Successfully wrote record for {vehicle_id}")
+        
     except Exception as e:
         logger.error(f"DynamoDB Write Error for {vehicle_id}: {e}")
-        raise # Re-raise to trigger retry in the main pipeline
+        raise
 
 def process_s3_image(bucket, key):
     try:
@@ -124,19 +168,28 @@ def process_s3_image(bucket, key):
 
         for box in results[0].boxes:
             try:
-                conf = float(box.conf[0])
+                conf = box.conf[0].item() # Standard Python float
                 if conf < 0.5: continue
 
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
-                crop = img[max(0, y1):y2, max(0, x1):x2] # Prevent negative indexing
+                crop = img[max(0, y1):y2, max(0, x1):x2]
                 
                 if crop is None or crop.size == 0: continue
 
                 success, buffer = cv2.imencode(".jpg", crop)
                 if not success: continue
 
-                plate_text = detect_largest_text_rekognition(buffer.tobytes())
-                write_result(str(uuid.uuid4()), conf, plate_text, image_url)
+                # FIX: Unpack the tuple returned by Rekognition
+                plate_text, ocr_conf = detect_largest_text_rekognition(buffer.tobytes())
+                
+                # Pass both values to write_result
+                write_result(
+                    vehicle_id=str(uuid.uuid4()), 
+                    conf=conf, 
+                    plate_text=plate_text, 
+                    image_url=image_url,
+                    ocr_conf=ocr_conf
+                )
                 detections += 1
             except Exception as e:
                 logger.error(f"Error in single detection crop: {e}")
