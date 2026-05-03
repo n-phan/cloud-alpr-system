@@ -58,10 +58,13 @@ export default function EventLogStaff() {
     }
   ];
 
-  const filteredEvents = events.filter(event =>
-    event.vehicleId.includes(filter.toUpperCase()) ||
-    event.plateText.includes(filter.toUpperCase())
-  );
+  const filteredEvents = events.filter(event => {
+    const plate = event?.plateText != null
+      ? String(event.plateText).toLowerCase()
+      : "";
+
+    return plate.includes(filter.toLowerCase());
+  })
 
   const formatTime = (timestamp) => {
     return new Date(typeof timestamp === 'string' ? timestamp : timestamp * 1000).toLocaleString();
@@ -101,25 +104,40 @@ export default function EventLogStaff() {
             </tr>
           </thead>
           <tbody>
-            {filteredEvents.length > 0 ? (
-              filteredEvents.map((event, idx) => (
-                <tr key={idx} className={`status-${(event.permitStatus || 'unknown').toLowerCase()}`}>
-                  <td>{formatTime(event.timestamp)}</td>
-                  <td>{event.vehicleId}</td>
-                  <td>{event.plateText}</td>
-                  <td>
-                    <span className={`status-badge ${(event.permitStatus || 'unknown').toLowerCase()}`}>
-                      {event.permitStatus || '—'}
-                    </span>
-                  </td>
-                  <td>{event.eventType}</td>
-                  <td>
-                    <button onClick={() => handleViewEvent(event)} className="view-button">
-                      View Event
-                    </button>
-                  </td>
-                </tr>
-              ))
+            {filteredEvents && filteredEvents.length > 0 ? (
+              filteredEvents.map((event, idx) => {
+                // 1. Double check the event object exists
+                if (!event) return null;
+
+                // 2. Safely parse the permit status with explicit string fallbacks
+                const status = event.permitStatus != null
+                  ? String(event.permitStatus).toLowerCase()
+                  : 'unknown';
+
+                // 3. Prevent crash if plateText or vehicleId are null/undefined
+                const safePlateText = event.plateText != null ? String(event.plateText) : '—';
+                const safeVehicleId = event.vehicleId != null ? String(event.vehicleId) : '—';
+                const safeEventType = event.eventType != null ? String(event.eventType) : '—';
+
+                return (
+                  <tr key={idx} className={`status-${status}`}>
+                    <td>{event.timestamp ? formatTime(event.timestamp) : '—'}</td>
+                    <td>{safeVehicleId}</td>
+                    <td>{safePlateText}</td>
+                    <td>
+                      <span className={`status-badge ${status}`}>
+                        {event.permitStatus || '—'}
+                      </span>
+                    </td>
+                    <td>{safeEventType}</td>
+                    <td>
+                      <button onClick={() => handleViewEvent(event)} className="view-button">
+                        View Event
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td colSpan="6" className="no-events">No events found</td>
