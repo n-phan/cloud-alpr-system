@@ -16,15 +16,20 @@ export default function EventLogStaff() {
   }, []);
 
   const fetchEvents = async () => {
+    setLoading(true);
+
     try {
       const data = await getEvents(50);
+
       const sorted = (Array.isArray(data) ? data : []).sort(
         (a, b) => b.timestamp - a.timestamp
       );
+
       setEvents(sorted);
       setError(null);
     } catch (err) {
       console.error('Error fetching events:', err);
+      setError('Failed to load events');
       setEvents(mockEvents());
     } finally {
       setLoading(false);
@@ -58,10 +63,22 @@ export default function EventLogStaff() {
     }
   ];
 
-  const filteredEvents = events.filter(event =>
-    event.vehicleId.includes(filter.toUpperCase()) ||
-    event.plateText.includes(filter.toUpperCase())
-  );
+  const filteredEvents = events.filter((event) => {
+    const search = filter.toLowerCase();
+
+    const plate = event?.plateText != null
+      ? String(event.plateText).toLowerCase()
+      : "";
+
+    const vehicleId = event?.vehicleId != null
+      ? String(event.vehicleId).toLowerCase()
+      : "";
+
+    return (
+      plate.includes(search) ||
+      vehicleId.includes(search)
+    );
+  });
 
   const formatTime = (timestamp) => {
     return new Date(typeof timestamp === 'string' ? timestamp : timestamp * 1000).toLocaleString();
@@ -76,8 +93,13 @@ export default function EventLogStaff() {
 
   return (
     <div className="event-log-container">
-      <h2>Recent Events</h2>
+      <div className="event-log-header">
+        <h2>Recent Events</h2>
 
+        <button className="refresh-btn" onClick={fetchEvents} disabled={loading}>
+          {loading ? 'Loading…' : 'Refresh'}
+        </button>
+      </div>
       <input
         type="text"
         placeholder="Filter by vehicle ID or plate..."
@@ -101,25 +123,40 @@ export default function EventLogStaff() {
             </tr>
           </thead>
           <tbody>
-            {filteredEvents.length > 0 ? (
-              filteredEvents.map((event, idx) => (
-                <tr key={idx} className={`status-${(event.permitStatus || 'unknown').toLowerCase()}`}>
-                  <td>{formatTime(event.timestamp)}</td>
-                  <td>{event.vehicleId}</td>
-                  <td>{event.plateText}</td>
-                  <td>
-                    <span className={`status-badge ${(event.permitStatus || 'unknown').toLowerCase()}`}>
-                      {event.permitStatus || '—'}
-                    </span>
-                  </td>
-                  <td>{event.eventType}</td>
-                  <td>
-                    <button onClick={() => handleViewEvent(event)} className="view-button">
-                      View Event
-                    </button>
-                  </td>
-                </tr>
-              ))
+            {filteredEvents && filteredEvents.length > 0 ? (
+              filteredEvents.map((event, idx) => {
+                // 1. Double check the event object exists
+                if (!event) return null;
+
+                // 2. Safely parse the permit status with explicit string fallbacks
+                const status = event.permitStatus != null
+                  ? String(event.permitStatus).toLowerCase()
+                  : 'unknown';
+
+                // 3. Prevent crash if plateText or vehicleId are null/undefined
+                const safePlateText = event.plateText != null ? String(event.plateText) : '—';
+                const safeVehicleId = event.vehicleId != null ? String(event.vehicleId) : '—';
+                const safeEventType = event.eventType != null ? String(event.eventType) : '—';
+
+                return (
+                  <tr key={idx} className={`status-${status}`}>
+                    <td>{event.timestamp ? formatTime(event.timestamp) : '—'}</td>
+                    <td>{safeVehicleId}</td>
+                    <td>{safePlateText}</td>
+                    <td>
+                      <span className={`status-badge ${status}`}>
+                        {event.permitStatus || '—'}
+                      </span>
+                    </td>
+                    <td>{safeEventType}</td>
+                    <td>
+                      <button onClick={() => handleViewEvent(event)} className="view-button">
+                        View Event
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td colSpan="6" className="no-events">No events found</td>
@@ -163,9 +200,17 @@ export default function EventLogStaff() {
               </div>
               <div className="event-detail-item">
                 <strong>Captured Image:</strong>
-                <div className="image-placeholder">
-                  [License plate image would display here in Phase 6]
-                </div>
+                {selectedEvent.imageUrl ? (
+                  <img
+                    src={selectedEvent.imageUrl}
+                    alt={`Vehicle ${selectedEvent.vehicleId}`}
+                    className="license-plate-image"
+                  />
+                ) : (
+                  <div className="image-placeholder">
+                    <span>No Image Available</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
