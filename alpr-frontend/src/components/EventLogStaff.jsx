@@ -163,9 +163,17 @@ export default function EventLogStaff() {
               </div>
               <div className="event-detail-item">
                 <strong>Captured Image:</strong>
-                <div className="image-placeholder">
-                  [License plate image would display here in Phase 6]
-                </div>
+                {selectedEvent.imageUrl ? (
+                  <img
+                    src={selectedEvent.imageUrl}
+                    alt={`Vehicle ${selectedEvent.vehicleId}`}
+                    className="license-plate-image"
+                  />
+                ) : (
+                  <div className="image-placeholder">
+                    <span>No Image Available</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
