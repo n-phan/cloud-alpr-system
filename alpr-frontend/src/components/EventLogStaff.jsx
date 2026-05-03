@@ -16,15 +16,20 @@ export default function EventLogStaff() {
   }, []);
 
   const fetchEvents = async () => {
+    setLoading(true);
+
     try {
       const data = await getEvents(50);
+
       const sorted = (Array.isArray(data) ? data : []).sort(
         (a, b) => b.timestamp - a.timestamp
       );
+
       setEvents(sorted);
       setError(null);
     } catch (err) {
       console.error('Error fetching events:', err);
+      setError('Failed to load events');
       setEvents(mockEvents());
     } finally {
       setLoading(false);
@@ -79,8 +84,13 @@ export default function EventLogStaff() {
 
   return (
     <div className="event-log-container">
-      <h2>Recent Events</h2>
+      <div className="event-log-header">
+        <h2>Recent Events</h2>
 
+        <button className="refresh-btn" onClick={fetchEvents} disabled={loading}>
+          {loading ? 'Loading…' : 'Refresh'}
+        </button>
+      </div>
       <input
         type="text"
         placeholder="Filter by vehicle ID or plate..."
