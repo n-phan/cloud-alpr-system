@@ -63,13 +63,22 @@ export default function EventLogStaff() {
     }
   ];
 
-  const filteredEvents = events.filter(event => {
+  const filteredEvents = events.filter((event) => {
+    const search = filter.toLowerCase();
+
     const plate = event?.plateText != null
       ? String(event.plateText).toLowerCase()
       : "";
 
-    return plate.includes(filter.toLowerCase());
-  })
+    const vehicleId = event?.vehicleId != null
+      ? String(event.vehicleId).toLowerCase()
+      : "";
+
+    return (
+      plate.includes(search) ||
+      vehicleId.includes(search)
+    );
+  });
 
   const formatTime = (timestamp) => {
     return new Date(typeof timestamp === 'string' ? timestamp : timestamp * 1000).toLocaleString();
