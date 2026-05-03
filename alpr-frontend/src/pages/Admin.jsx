@@ -1,18 +1,16 @@
 import { useState } from 'react';
 import AdminSummaryCards from '../components/AdminSummaryCards';
-import EventLogAdmin from '../components/EventLogAdmin';
 import PermitManager from '../components/PermitManager';
 import CitationManager from '../components/CitationManager';
 import '../styles/Admin.css';
 
 const TABS = [
-  { id: 'events', label: 'Event Log' },
   { id: 'permits', label: 'Permit Management' },
   { id: 'citations', label: 'Citations' },
 ];
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState('events');
+  const [activeTab, setActiveTab] = useState('permits');
 
   return (
     <div className="admin-container">
@@ -36,7 +34,6 @@ export default function Admin() {
       </div>
 
       <div className="admin-tab-content">
-        {activeTab === 'events' && <EventLogAdmin />}
         {activeTab === 'permits' && <PermitManager />}
         {activeTab === 'citations' && <CitationManager />}
       </div>
