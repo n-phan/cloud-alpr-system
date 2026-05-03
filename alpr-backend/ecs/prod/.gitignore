@@ -1,20 +1,2 @@
-# Python environment
-venv/
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Environment variables and secrets
+.venv
 .env
-
-# Local machine configuration
-.vscode/
-.idea/
-
-# Large model files (if you don't want them in Git)
-*.pt
-*.onnx
-
-# System files
-.DS_Store
-Thumbs.db

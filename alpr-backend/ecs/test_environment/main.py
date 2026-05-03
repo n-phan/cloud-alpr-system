@@ -1,41 +1,28 @@
-import os
-from yolo_detector import detect_plates
-from cropper import crop_plate
-from fast_plate import recognize_plate
-from rekognition import run_rekognition
-from config import IMAGE_DIR, IMAGE_EXTENSIONS
+from sqs import receive_messages, delete_message, parse_s3_event
+from s3_client import download_image
 
+def main():
+    print("ECS worker started...")
 
-def process_image(image_path):
-    image, boxes = detect_plates(image_path)
+    while True:
+        messages = receive_messages()
 
-    results = []
+        for msg in messages:
+            try:
+                bucket, key = parse_s3_event(msg)
 
-    for box in boxes:
-        crop = crop_plate(image, box)
-        plate, conf = recognize_plate(crop)
-        results.append((plate, conf))
+                print(f"Processing: {bucket}/{key}")
 
-    return results
+                local_path = download_image(bucket, key)
 
+                results = process_image(local_path)
 
-def run_folder():
-    files = [
-        f for f in os.listdir(IMAGE_DIR)
-        if f.lower().endswith(IMAGE_EXTENSIONS)
-    ]
+                print("Results:", results)
 
-    for f in files:
-        path = os.path.join(IMAGE_DIR, f)
+                # delete ONLY after success
+                delete_message(msg["ReceiptHandle"])
 
-        print(f"\nProcessing: {f}")
+            except Exception as e:
+                print("Processing failed:", e)
 
-        plates = process_image(path)
-        rekog_plate, rekog_conf = run_rekognition(path)
-
-        print("Fast OCR:", plates)
-        print("Rekognition:", rekog_plate, rekog_conf)
-
-
-if __name__ == "__main__":
-    run_folder()
+        time.sleep(2)
