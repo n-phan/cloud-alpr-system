@@ -85,7 +85,7 @@ function App() {
             path="/dashboard"
             element={
               <ProtectedRoute user={user}>
-                <Dashboard isAdmin={user?.isAdmin} />
+                <Dashboard isAdmin={user?.isAdmin} username={user?.email} />
               </ProtectedRoute>
             }
           />

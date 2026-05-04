@@ -98,6 +98,7 @@ def lambda_handler(event, context):
                     occurrence_key=occurrence_key,
                     issued_by="orphan-scan-handler",
                     related_event_ts=event_ts,
+                    image_url=image_url,
                 )
                 if result.get("duplicate"):
                     skipped_duplicate += 1
@@ -153,6 +154,7 @@ def lambda_handler(event, context):
             occurrence_key=occurrence_key,
             issued_by="orphan-scan-handler",
             related_event_ts=event_ts,
+            image_url=image_url,
         )
         if result.get("duplicate"):
             skipped_duplicate += 1
@@ -268,20 +270,23 @@ def _route_to_backlog(vehicle_id, plate_text, confidence, permit_status, event_t
     _invoke(VALIDATION_BACKLOG_FUNCTION, {"body": json.dumps(body)})
 
 
-def _create_citation(vehicle_id, plate_text, reason, occurrence_key, issued_by, related_event_ts):
+def _create_citation(vehicle_id, plate_text, reason, occurrence_key, issued_by, related_event_ts, image_url=None):
+    payload = {
+        "vehicleId": vehicle_id,
+        "plateText": plate_text,
+        "reason": reason,
+        "status": "issued",
+        "issuedBy": issued_by,
+        "occurrenceKey": occurrence_key,
+        "notes": f"relatedEventTs={related_event_ts}",
+    }
+    if image_url is not None:
+        payload["imageUrl"] = image_url
     response = _invoke(
         CITATION_CREATE_FUNCTION,
         {
             "httpMethod": "POST",
-            "body": json.dumps({
-                "vehicleId": vehicle_id,
-                "plateText": plate_text,
-                "reason": reason,
-                "status": "issued",
-                "issuedBy": issued_by,
-                "occurrenceKey": occurrence_key,
-                "notes": f"relatedEventTs={related_event_ts}",
-            }),
+            "body": json.dumps(payload),
         },
     )
     body = response.get("body")

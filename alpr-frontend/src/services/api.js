@@ -159,6 +159,22 @@ export const getAllCitations = async (status = null, limit = 50) => {
   }
 };
 
+export const createCitation = async ({ vehicleId, plateText, reason, amount, notes, issuedBy, imageUrl, relatedBacklogId }) => {
+  try {
+    const payload = { vehicleId, plateText, reason };
+    if (amount != null) payload.amount = amount;
+    if (notes?.trim()) payload.notes = notes.trim();
+    if (issuedBy) payload.issuedBy = issuedBy;
+    if (imageUrl) payload.imageUrl = imageUrl;
+    if (relatedBacklogId) payload.relatedBacklogId = relatedBacklogId;
+    const response = await api.post('/admin-citations', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating citation:', error);
+    throw error;
+  }
+};
+
 export const updateCitation = async (citationId, { status, notes, processedBy }) => {
   try {
     const payload = { citationId };
