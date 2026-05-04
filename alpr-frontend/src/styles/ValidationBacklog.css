@@ -291,8 +291,14 @@
   background: #d1d5db;
 }
 
+.backlog-admin-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .rereview-btn {
-  align-self: flex-start;
   background: none;
   border: 1px solid #aaa;
   color: #666;
@@ -307,6 +313,93 @@
 .rereview-btn:hover {
   border-color: #555;
   color: #333;
+}
+
+.issue-citation-btn {
+  background: none;
+  border: 1px solid #0066cc;
+  color: #0066cc;
+  padding: 0.3rem 0.85rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.issue-citation-btn:hover {
+  background: #0066cc;
+  color: white;
+}
+
+/* ── Manual citation form ── */
+
+.citation-issue-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  padding: 0.75rem;
+  background: #f0f6ff;
+  border: 1px solid #bdd3f0;
+  border-radius: 6px;
+}
+
+.citation-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.citation-form-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #555;
+}
+
+.citation-form-input {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #333;
+  background: white;
+  transition: border-color 0.2s;
+}
+
+.citation-form-input:focus {
+  outline: none;
+  border-color: #0066cc;
+}
+
+.citation-form-amount {
+  width: 120px;
+}
+
+.citation-form-error {
+  font-size: 0.8rem;
+  color: #c00;
+  margin: 0;
+}
+
+.citation-issue-success {
+  font-size: 0.875rem;
+  color: #1a7f4b;
+  font-weight: 600;
+  margin: 0;
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.action-btn.issue-citation {
+  background: #0066cc;
+  color: white;
+}
+
+.action-btn.issue-citation:hover:not(:disabled) {
+  background: #0052a3;
 }
 
 /* ── Status badge ── */

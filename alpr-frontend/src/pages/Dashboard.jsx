@@ -4,7 +4,7 @@ import ValidationBacklog from '../components/ValidationBacklog';
 import EventLog from '../components/EventLog';
 import '../styles/Dashboard.css';
 
-export default function Dashboard({ isAdmin = false }) {
+export default function Dashboard({ isAdmin = false, username = '' }) {
   const [activeTab, setActiveTab] = useState('upload');
 
   return (
@@ -32,7 +32,7 @@ export default function Dashboard({ isAdmin = false }) {
 
       <div className="tab-content">
         {activeTab === 'upload' && <ImageUpload />}
-        {activeTab === 'lookup' && <ValidationBacklog isAdmin={isAdmin} />}
+        {activeTab === 'lookup' && <ValidationBacklog isAdmin={isAdmin} username={username} />}
         {activeTab === 'events' && <EventLog />}
       </div>
     </div>

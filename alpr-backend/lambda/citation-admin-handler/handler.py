@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import time
+import uuid
 from decimal import Decimal
 
 import boto3
@@ -28,6 +29,8 @@ def lambda_handler(event, context):
     try:
         if method == "GET":
             return _list_citations(event)
+        if method == "POST":
+            return _create_citation_manual(event)
         if method == "PUT":
             return _update_citation(event)
         return error_response(405, f"Method not allowed: {method}")
@@ -79,6 +82,55 @@ def _list_citations(event):
     return {
         "statusCode": 200,
         "body": json.dumps(payload, default=_json_serialize),
+        "headers": _cors_headers(),
+    }
+
+
+def _create_citation_manual(event):
+    if isinstance(event.get("body"), str):
+        body = json.loads(event["body"])
+    else:
+        body = event.get("body") or {}
+
+    for field in ("vehicleId", "plateText", "reason"):
+        if not body.get(field):
+            return error_response(400, f"Missing required field: {field}")
+
+    citation_id = str(uuid.uuid4())
+    issued_at = int(time.time() * 1000)
+
+    item = {
+        "citation_id": citation_id,
+        "vehicle_id": body["vehicleId"],
+        "plate_text": body["plateText"],
+        "reason": body["reason"],
+        "issued_at": issued_at,
+        "status": "issued",
+    }
+
+    raw_amount = body.get("amount", os.environ.get("DEFAULT_CITATION_AMOUNT", "100"))
+    try:
+        item["amount"] = Decimal(str(raw_amount))
+    except Exception:
+        item["amount"] = Decimal("100")
+
+    if body.get("notes"):
+        item["notes"] = body["notes"]
+    if body.get("issuedBy"):
+        item["issued_by"] = body["issuedBy"]
+    if body.get("imageUrl"):
+        item["image_url"] = body["imageUrl"]
+    if body.get("relatedBacklogId"):
+        item["related_backlog_id"] = body["relatedBacklogId"]
+
+    table.put_item(Item=item)
+
+    return {
+        "statusCode": 201,
+        "body": json.dumps(
+            {"message": "Citation created", "citationId": citation_id, "issuedAt": issued_at},
+            default=_json_serialize,
+        ),
         "headers": _cors_headers(),
     }
 
@@ -164,7 +216,7 @@ def _cors_headers():
     return {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET,PUT,OPTIONS",
+        "Access-Control-Allow-Methods": "GET,PUT,POST,OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type,Authorization",
     }
 
