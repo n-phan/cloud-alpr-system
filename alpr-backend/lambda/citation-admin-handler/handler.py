@@ -96,7 +96,13 @@ def _create_citation_manual(event):
         if not body.get(field):
             return error_response(400, f"Missing required field: {field}")
 
-    citation_id = str(uuid.uuid4())
+    related_backlog_id = body.get("relatedBacklogId")
+    if related_backlog_id:
+        # Deterministic ID keyed on backlog item → conditional put enforces one citation per backlog item
+        citation_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"backlog:{related_backlog_id}"))
+    else:
+        citation_id = str(uuid.uuid4())
+
     issued_at = int(time.time() * 1000)
 
     item = {
@@ -120,10 +126,23 @@ def _create_citation_manual(event):
         item["issued_by"] = body["issuedBy"]
     if body.get("imageUrl"):
         item["image_url"] = body["imageUrl"]
-    if body.get("relatedBacklogId"):
-        item["related_backlog_id"] = body["relatedBacklogId"]
+    if related_backlog_id:
+        item["related_backlog_id"] = related_backlog_id
 
-    table.put_item(Item=item)
+    put_kwargs = {"Item": item}
+    if related_backlog_id:
+        put_kwargs["ConditionExpression"] = "attribute_not_exists(citation_id)"
+
+    try:
+        table.put_item(**put_kwargs)
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            return {
+                "statusCode": 200,
+                "body": json.dumps({"message": "Citation already exists for this backlog item", "duplicate": True, "citationId": citation_id}),
+                "headers": _cors_headers(),
+            }
+        raise
 
     return {
         "statusCode": 201,
