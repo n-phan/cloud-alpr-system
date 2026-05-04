@@ -26,7 +26,7 @@ function ConfidenceBar({ value }) {
   );
 }
 
-function BacklogCard({ item, onAction, onCitationIssued, isAdmin, username }) {
+function BacklogCard({ item, onAction, isAdmin, username }) {
   const [notes, setNotes] = useState('');
   const [acting, setActing] = useState(false);
   const [rereviewing, setRereviewing] = useState(false);
@@ -36,7 +36,7 @@ function BacklogCard({ item, onAction, onCitationIssued, isAdmin, username }) {
   const [citationAmount, setCitationAmount] = useState('100');
   const [citationNotes, setCitationNotes] = useState('');
   const [citationError, setCitationError] = useState(null);
-  const [citationSuccess, setCitationSuccess] = useState(false);
+  const [citationAlreadyIssued, setCitationAlreadyIssued] = useState(false);
 
   const handleAction = async (status) => {
     setActing(true);
@@ -87,12 +87,8 @@ function BacklogCard({ item, onAction, onCitationIssued, isAdmin, username }) {
         imageUrl: item.image_url || undefined,
         relatedBacklogId: item.backlog_id,
       });
-      setCitationSuccess(true);
-      setTimeout(() => {
-        setCitingManually(false);
-        setCitationSuccess(false);
-        onCitationIssued(item.backlog_id);
-      }, 1500);
+      setCitingManually(false);
+      setCitationAlreadyIssued(true);
     } catch {
       setCitationError('Failed to issue citation. Please try again.');
     } finally {
@@ -182,63 +178,57 @@ function BacklogCard({ item, onAction, onCitationIssued, isAdmin, username }) {
 
           {citingManually && (
             <div className="citation-issue-form">
-              {citationSuccess ? (
-                <p className="citation-issue-success">Citation issued successfully.</p>
-              ) : (
-                <>
-                  <div className="citation-form-row">
-                    <label className="citation-form-label">Reason</label>
-                    <input
-                      className="citation-form-input"
-                      type="text"
-                      value={citationReason}
-                      onChange={(e) => setCitationReason(e.target.value)}
-                      disabled={acting}
-                      placeholder="e.g. No valid permit"
-                    />
-                  </div>
-                  <div className="citation-form-row">
-                    <label className="citation-form-label">Amount ($)</label>
-                    <input
-                      className="citation-form-input citation-form-amount"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={citationAmount}
-                      onChange={(e) => setCitationAmount(e.target.value)}
-                      disabled={acting}
-                    />
-                  </div>
-                  <div className="citation-form-row">
-                    <label className="citation-form-label">Notes</label>
-                    <textarea
-                      className="backlog-notes-input"
-                      placeholder="Optional notes…"
-                      value={citationNotes}
-                      onChange={(e) => setCitationNotes(e.target.value)}
-                      disabled={acting}
-                      rows={2}
-                    />
-                  </div>
-                  {citationError && <p className="citation-form-error">{citationError}</p>}
-                  <div className="backlog-action-buttons">
-                    <button
-                      className="action-btn issue-citation"
-                      onClick={handleIssueCitation}
-                      disabled={acting}
-                    >
-                      {acting ? 'Issuing…' : 'Issue Citation'}
-                    </button>
-                    <button
-                      className="action-btn cancel"
-                      onClick={() => setCitingManually(false)}
-                      disabled={acting}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </>
-              )}
+              <div className="citation-form-row">
+                <label className="citation-form-label">Reason</label>
+                <input
+                  className="citation-form-input"
+                  type="text"
+                  value={citationReason}
+                  onChange={(e) => setCitationReason(e.target.value)}
+                  disabled={acting}
+                  placeholder="e.g. No valid permit"
+                />
+              </div>
+              <div className="citation-form-row">
+                <label className="citation-form-label">Amount ($)</label>
+                <input
+                  className="citation-form-input citation-form-amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={citationAmount}
+                  onChange={(e) => setCitationAmount(e.target.value)}
+                  disabled={acting}
+                />
+              </div>
+              <div className="citation-form-row">
+                <label className="citation-form-label">Notes</label>
+                <textarea
+                  className="backlog-notes-input"
+                  placeholder="Optional notes…"
+                  value={citationNotes}
+                  onChange={(e) => setCitationNotes(e.target.value)}
+                  disabled={acting}
+                  rows={2}
+                />
+              </div>
+              {citationError && <p className="citation-form-error">{citationError}</p>}
+              <div className="backlog-action-buttons">
+                <button
+                  className="action-btn issue-citation"
+                  onClick={handleIssueCitation}
+                  disabled={acting}
+                >
+                  {acting ? 'Issuing…' : 'Issue Citation'}
+                </button>
+                <button
+                  className="action-btn cancel"
+                  onClick={() => setCitingManually(false)}
+                  disabled={acting}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
 
@@ -248,8 +238,12 @@ function BacklogCard({ item, onAction, onCitationIssued, isAdmin, username }) {
                 Re-review
               </button>
               {isApproved && (
-                <button className="issue-citation-btn" onClick={handleOpenCitation}>
-                  Issue Citation
+                <button
+                  className={`issue-citation-btn${citationAlreadyIssued ? ' already-issued' : ''}`}
+                  onClick={citationAlreadyIssued ? undefined : handleOpenCitation}
+                  disabled={citationAlreadyIssued}
+                >
+                  {citationAlreadyIssued ? 'Citation Already Issued' : 'Issue Citation'}
                 </button>
               )}
             </div>
@@ -293,10 +287,6 @@ export default function ValidationBacklog({ isAdmin = false, username = '' }) {
     setItems(prev => prev.filter(i => i.backlog_id !== backlogId));
   };
 
-  const handleCitationIssued = (backlogId) => {
-    setItems(prev => prev.filter(i => i.backlog_id !== backlogId));
-  };
-
   return (
     <div className="validation-backlog-container">
       <div className="backlog-header">
@@ -330,7 +320,6 @@ export default function ValidationBacklog({ isAdmin = false, username = '' }) {
             key={item.backlog_id}
             item={item}
             onAction={handleAction}
-            onCitationIssued={handleCitationIssued}
             isAdmin={isAdmin}
             username={username}
           />

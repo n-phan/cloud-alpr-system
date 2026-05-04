@@ -327,9 +327,15 @@
   transition: background 0.15s, color 0.15s;
 }
 
-.issue-citation-btn:hover {
+.issue-citation-btn:hover:not(:disabled) {
   background: #0066cc;
   color: white;
+}
+
+.issue-citation-btn.already-issued {
+  border-color: #aaa;
+  color: #aaa;
+  cursor: not-allowed;
 }
 
 /* ── Manual citation form ── */
@@ -382,15 +388,6 @@
   font-size: 0.8rem;
   color: #c00;
   margin: 0;
-}
-
-.citation-issue-success {
-  font-size: 0.875rem;
-  color: #1a7f4b;
-  font-weight: 600;
-  margin: 0;
-  text-align: center;
-  padding: 0.5rem 0;
 }
 
 .action-btn.issue-citation {
