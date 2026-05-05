@@ -59,7 +59,6 @@ function BacklogCard({ item, onAction, isAdmin, username }) {
     setCitationAmount('100');
     setCitationNotes('');
     setCitationError(null);
-    setCitationSuccess(false);
     setCitingManually(true);
     setRereviewing(false);
   };
