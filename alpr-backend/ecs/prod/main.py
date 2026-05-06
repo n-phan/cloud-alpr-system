@@ -1,6 +1,6 @@
 import time
 
-from sqs.sqs import receive_messages, delete_message, parse_s3_event
+from sqs.sqs import receive_messages, delete_message, parse_s3_event, retry_with_backoff
 from s3.s3_client import download_image
 from worker.processor import process_plate
 from dynamodb.db import write_event
@@ -12,35 +12,23 @@ def main():
     while True:
         try:
             messages = receive_messages()
-
             for msg in messages:
                 try:
                     bucket, key = parse_s3_event(msg)
-                    print(f"Processing: {bucket}/{key}")
+                    path = download_image(bucket, key)
+                    results = process_plate(path)
 
-                    local_path = download_image(bucket, key)
-
-                    # -------------------------
-                    # ML PIPELINE
-                    # -------------------------
-                    results = process_plate(local_path)
-
-                    print("Results:", results)
-
-                    # -------------------------
-                    # WRITE TO DB (FIXED)
-                    # -------------------------
                     for r in results:
                         write_event(
                             conf=r.get("confidence", 0.0),
                             plate_text=r.get("plate", "NOT_FOUND"),
-                            image_url = f"https://{bucket}.s3.{AWS_REGION}.amazonaws.com/{key}",
+                            image_url=f"https://{bucket}.s3.{AWS_REGION}.amazonaws.com/{key}",
                         )
 
                     delete_message(msg["ReceiptHandle"])
 
                 except Exception as e:
-                    print("[MESSAGE FAILED]", e)
+                    print("[FAIL] letting SQS retry:", e)
 
         except Exception as e:
             print("[WORKER LOOP CRASH]", e)
