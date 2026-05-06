@@ -104,20 +104,20 @@ Three tabs:
 - Each card shows the captured image, plate text, confidence bar, and metadata
 - Pending items can be approved or rejected with optional notes
 - Admin users can re-review already-approved or rejected items to correct a prior decision
+- Admin users can manually issue a citation for any approved item via an inline form (reason, amount, optional notes); the plate image and backlog ID are automatically attached to the citation record
 - Actioning a card removes it from the current view immediately
 
 **Recent Events**
 - Live event table (auto-refreshes every 10 seconds)
 - Columns: Time, Vehicle ID, Plate Text, Permit Status, Event Type
-- "View Event" button opens a detail modal per row
-- Filter by vehicle ID or plate text
+- "View Event" button opens a detail modal with full metadata and the captured plate image when available
+- Filter controls: text search by vehicle ID or plate, time range (last 1/6/24 hours or 7 days), permit status, and event type
 
 ### Admin (`/admin`) — Admin only
 - Summary cards row showing Total Events, Valid Permits, Expired/Revoked, and Pending Validation (auto-refreshes every 30 s)
-- Three tabs:
-  - **Event Log** — full event table with Confidence column, filter by vehicle ID or plate
+- Two tabs:
   - **Permit Management** — table of all permits with Activate/Revoke actions, inline editing of owner and expiry date, and an Add Permit form
-  - **Citations** — table of all citations with status filter (All / Issued / Paid / Disputed / Voided) and inline status update with optional notes
+  - **Citations** — table of all citations with status filter (All / Issued / Paid / Disputed / Voided); inline status update with optional notes; "View Image" button opens a modal with the captured plate image when one is stored on the citation record
 - Header badge toggles between **Admin** (navigates to `/admin`) and **Dashboard** (navigates to `/dashboard`) depending on current page
 
 ---
@@ -133,7 +133,7 @@ src/
 │   ├── EventLogAdmin.jsx      — event table for admins (adds Confidence column)
 │   ├── AdminSummaryCards.jsx  — stat cards for the admin dashboard
 │   ├── PermitManager.jsx      — permit list with add, edit, activate, and revoke
-│   ├── CitationManager.jsx    — citation list with status filter and inline status update
+│   ├── CitationManager.jsx    — citation list with status filter, inline status update, and plate image modal
 │   └── ProtectedRoute.jsx     — auth guard for protected routes
 ├── pages/
 │   ├── Citations.jsx          — public citation + permit lookup

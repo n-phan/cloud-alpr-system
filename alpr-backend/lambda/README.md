@@ -264,17 +264,13 @@ cat response.json
 
 ### Function 9: citation-create-handler
 
+Internal function — invoked Lambda-to-Lambda by `gateevents-stream-router` and `orphan-scan-handler`. There is no public HTTP route. To test the end-to-end citation creation path, use the `gateevents-stream-router` test payload above (high-confidence record with invalid permit) or invoke directly:
+
 ```bash
 cat > payload.json << 'EOF'
 {
   "httpMethod": "POST",
-  "body": {
-    "vehicleId": "CIT-TEST-001",
-    "plateText": "CIT-TEST-001",
-    "reason": "No valid permit",
-    "amount": 120,
-    "issuedBy": "admin-user"
-  }
+  "body": "{\"vehicleId\":\"CIT-TEST-001\",\"plateText\":\"CIT-TEST-001\",\"reason\":\"No valid permit\",\"amount\":120,\"issuedBy\":\"stream-router\"}"
 }
 EOF
 
@@ -292,6 +288,8 @@ cat response.json
 - `statusCode`: 201
 - `message`: "Citation created"
 - `citationId`: UUID
+
+To manually create a citation via HTTP (admin workflow), use `citation-admin-handler` with `POST` instead — see Function 12 below.
 
 ---
 
@@ -402,12 +400,35 @@ cat response.json
 
 **Expected**: `statusCode` 200, `items` array of citations, `count`
 
+**Manually create a citation (POST)**
+```bash
+cat > payload.json << 'EOF'
+{
+  "httpMethod": "POST",
+  "body": "{\"vehicleId\":\"ABC-1234\",\"plateText\":\"ABC-1234\",\"reason\":\"No valid permit\",\"amount\":100,\"issuedBy\":\"admin@example.com\",\"relatedBacklogId\":\"<backlog-uuid>\"}"
+}
+EOF
+
+aws lambda invoke \
+  --function-name citation-admin-handler \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://payload.json \
+  --region us-west-2 \
+  response.json
+
+cat response.json
+```
+
+**Expected**: `statusCode` 201, `citationId` UUID, `issuedAt` timestamp
+
+Required fields: `vehicleId`, `plateText`, `reason`. Optional: `amount` (default `$100`), `notes`, `issuedBy`, `imageUrl`, `relatedBacklogId`.
+
 **Update a citation status (PUT)**
 ```bash
 cat > payload.json << 'EOF'
 {
   "httpMethod": "PUT",
-  "body": "{\"citationId\":\"<citation-uuid>\",\"status\":\"PAID\",\"notes\":\"Paid via portal\"}"
+  "body": "{\"citationId\":\"<citation-uuid>\",\"status\":\"paid\",\"notes\":\"Paid via portal\"}"
 }
 EOF
 
@@ -494,6 +515,7 @@ You should see:
 - [ ] citation-create-handler returns 201 with citationId
 - [ ] citation-lookup-handler returns 200 with citations array
 - [ ] citation-admin-handler GET returns 200 with items array
+- [ ] citation-admin-handler POST returns 201 with citationId
 - [ ] citation-admin-handler PUT returns 200 for status update
 - [ ] permit-admin-handler GET returns 200 with permits
 - [ ] permit-admin-handler POST returns 201 for new permit

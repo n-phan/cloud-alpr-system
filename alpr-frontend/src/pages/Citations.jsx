@@ -50,6 +50,13 @@ function CitationItem({ citation }) {
         <span className="citation-reason">{citation.reason || 'No reason provided'}</span>
         <span className={`citation-status ${status}`}>{status}</span>
       </div>
+      {citation.image_url && (
+        <img
+          className="citation-plate-image"
+          src={citation.image_url}
+          alt={`License plate ${citation.plate_text}`}
+        />
+      )}
       <div className="citation-meta">
         <span>
           <span className="label">Citation ID</span>

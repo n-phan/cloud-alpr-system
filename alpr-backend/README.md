@@ -33,12 +33,19 @@ CloudFormation stack. Functions originally created manually were migrated into t
 | `plate-submission-handler` | `POST /submit-plate` |
 | `validation-backlog-handler` | — (internal; queues low-confidence detections) |
 | `validation-backlog-admin-handler` | `GET /validation-backlog`, `PUT /validation-backlog` |
-| `gateevents-stream-router` | — (DynamoDB stream trigger; runs permit check and auto-creates citation when permit is invalid) |
-| `citation-create-handler` | `POST /citation` |
+| `gateevents-stream-router` | — (DynamoDB stream trigger; runs permit check and auto-creates citation when permit is invalid; passes `image_url` through to the citation record) |
+| `citation-create-handler` | — (internal; invoked Lambda-to-Lambda by `gateevents-stream-router` and `orphan-scan-handler`; no public HTTP route) |
 | `s3-uploader` | `POST /upload-image` |
 | `citation-lookup-handler` | `GET /get-citations` |
-| `citation-admin-handler` | `GET /admin-citations`, `PUT /admin-citations` |
-| `orphan-scan-handler` | — (EventBridge Scheduler trigger; resolves unmatched entry/exit events after matching window expires) |
+| `citation-admin-handler` | `GET /admin-citations`, `POST /admin-citations`, `PUT /admin-citations` |
+| `orphan-scan-handler` | — (EventBridge Scheduler trigger; resolves unmatched entry/exit events after matching window expires; passes `image_url` through to the citation record) |
+
+### Citation creation paths
+
+Citations can be created by two paths:
+
+1. **Automatic** — `gateevents-stream-router` (high-confidence detections) and `orphan-scan-handler` (unmatched orphan events) invoke `citation-create-handler` Lambda-to-Lambda. Both pass `image_url` when available so the plate image is stored with the citation record.
+2. **Manual** — Admin users can issue a citation directly from an approved `ValidationBacklog` item via `POST /admin-citations` → `citation-admin-handler`. The backlog item's `image_url` and `backlog_id` are included in the citation record.
 
 ---
 

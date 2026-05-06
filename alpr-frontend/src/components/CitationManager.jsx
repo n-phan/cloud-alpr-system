@@ -40,7 +40,7 @@ function StatusBadge({ status }) {
   );
 }
 
-function CitationRow({ citation, onUpdate }) {
+function CitationRow({ citation, onUpdate, onViewImage }) {
   const [editing, setEditing] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [notes, setNotes] = useState('');
@@ -124,6 +124,14 @@ function CitationRow({ citation, onUpdate }) {
                 Process
               </button>
             )}
+            {citation.image_url && (
+              <button
+                className="cm-action cm-action--image"
+                onClick={() => onViewImage({ url: citation.image_url, plate: citation.plate_text })}
+              >
+                View Image
+              </button>
+            )}
             {citation.notes && (
               <span className="cm-notes-indicator" title={citation.notes}>Notes</span>
             )}
@@ -139,6 +147,7 @@ export default function CitationManager() {
   const [statusFilter, setStatusFilter] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
     fetchCitations();
@@ -209,11 +218,31 @@ export default function CitationManager() {
             </thead>
             <tbody>
               {citations.map(c => (
-                <CitationRow key={c.citation_id} citation={c} onUpdate={handleUpdate} />
+                <CitationRow key={c.citation_id} citation={c} onUpdate={handleUpdate} onViewImage={setSelectedImage} />
               ))}
             </tbody>
           </table>
           <p className="cm-count">{citations.length} citation{citations.length !== 1 ? 's' : ''}</p>
+        </div>
+      )}
+
+      {selectedImage && (
+        <div className="cm-modal-overlay" onClick={() => setSelectedImage(null)}>
+          <div className="cm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cm-modal-header">
+              <span className="cm-modal-title">
+                Plate Image — <span className="cm-monospace">{selectedImage.plate || '—'}</span>
+              </span>
+              <button className="cm-modal-close" onClick={() => setSelectedImage(null)}>×</button>
+            </div>
+            <div className="cm-modal-body">
+              <img
+                className="cm-modal-image"
+                src={selectedImage.url}
+                alt={`License plate ${selectedImage.plate}`}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
