@@ -209,7 +209,7 @@ def lambda_handler(event, context):
                 timestamp=event_ts,
                 decision_reason="unknown-event-type-review",
                 decision_lane="high-confidence-automated",
-                permit_status=PERMIT_REVIEW
+                permit_status="UNKNOWN",
             )
             continue
 
@@ -253,7 +253,7 @@ def lambda_handler(event, context):
                     timestamp=event_ts,
                     decision_reason="orphan-review",
                     decision_lane="high-confidence-automated",
-                    permit_status=PERMIT_REVIEW,
+                    permit_status="UNKNOWN",
                 )
                 continue
 
