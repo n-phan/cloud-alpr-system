@@ -35,7 +35,6 @@ def main():
                             conf=r.get("confidence", 0.0),
                             plate_text=r.get("plate", "NOT_FOUND"),
                             image_url = f"https://{bucket}.s3.{AWS_REGION}.amazonaws.com/{key}",
-                            ocr_conf=r.get("ocr_confidence", 0.0)
                         )
 
                     delete_message(msg["ReceiptHandle"])

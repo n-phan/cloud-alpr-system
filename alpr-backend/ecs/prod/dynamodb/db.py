@@ -22,7 +22,7 @@ def to_decimal(value):
         return Decimal("0.0")
 
 
-def write_event(conf, plate_text, image_url, ocr_conf):
+def write_event(conf, plate_text, image_url):
     try:
         item = {
             "vehicle_id": str(uuid.uuid4()),
@@ -30,8 +30,6 @@ def write_event(conf, plate_text, image_url, ocr_conf):
             "confidence": to_decimal(conf),
             "plate_text": str(plate_text or "NOT_FOUND"),
             "image_url": str(image_url or ""),
-
-            "ocr_confidence": to_decimal(ocr_conf),
             "event_type": "DETECTION",
             "permit_status": "UNKNOWN",
             "timestamp": int(time.time())
