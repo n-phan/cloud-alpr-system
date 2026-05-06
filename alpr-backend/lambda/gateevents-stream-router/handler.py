@@ -6,6 +6,11 @@ from decimal import Decimal
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
 
+#CONSTANTS
+PERMIT_VALID = "VALID"
+PERMIT_INVALID = "INVALID"
+PERMIT_REVIEW = "PENDING REVIEW"
+
 THRESHOLD = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.7"))
 DETECTION_AUTO_CITATION_CONFIDENCE = float(
     os.environ.get("DETECTION_AUTO_CITATION_CONFIDENCE", "0.7")
@@ -105,6 +110,7 @@ def lambda_handler(event, context):
                 timestamp=event_ts,
                 decision_reason="low-confidence-review",
                 decision_lane="low-confidence-review",
+                permit_status=PERMIT_REVIEW,
             )
             continue
 
@@ -129,6 +135,7 @@ def lambda_handler(event, context):
                     timestamp=event_ts,
                     decision_reason="detection-review-fallback",
                     decision_lane="low-confidence-detection",
+                    permit_status=PERMIT_REVIEW,
                 )
                 continue
 
@@ -151,6 +158,7 @@ def lambda_handler(event, context):
                     timestamp=event_ts,
                     decision_reason="valid-permit",
                     decision_lane="high-confidence-detection",
+                    permit_status=PERMIT_VALID,
                 )
                 continue
 
@@ -179,6 +187,7 @@ def lambda_handler(event, context):
                 decision_reason="invalid-permit-citation",
                 decision_lane="high-confidence-detection",
                 occurrence_key=occurrence_key,
+                valid_permit=PERMIT_INVALID,
             )
             continue
 
@@ -200,6 +209,7 @@ def lambda_handler(event, context):
                 timestamp=event_ts,
                 decision_reason="unknown-event-type-review",
                 decision_lane="high-confidence-automated",
+                permit_status=PERMIT_REVIEW
             )
             continue
 
@@ -221,6 +231,7 @@ def lambda_handler(event, context):
                     timestamp=event_ts,
                     decision_reason="waiting-for-counterpart",
                     decision_lane="high-confidence-automated",
+                    permit_status=PERMIT_REVIEW,
                 )
                 continue
 
@@ -242,6 +253,7 @@ def lambda_handler(event, context):
                     timestamp=event_ts,
                     decision_reason="orphan-review",
                     decision_lane="high-confidence-automated",
+                    permit_status=PERMIT_REVIEW,
                 )
                 continue
 
@@ -269,6 +281,7 @@ def lambda_handler(event, context):
                 decision_reason="orphan-citation",
                 decision_lane="high-confidence-automated",
                 occurrence_key=occurrence_key,
+                permit_status=PERMIT_INVALID,
             )
             continue
 
@@ -282,6 +295,7 @@ def lambda_handler(event, context):
                 decision_lane="high-confidence-automated",
                 counterpart_timestamp=counterpart["timestamp"],
                 duration_seconds=duration_sec,
+                permit_status=PERMIT_VALID,
             )
             continue
 
@@ -305,6 +319,7 @@ def lambda_handler(event, context):
                 decision_lane="high-confidence-automated",
                 counterpart_timestamp=counterpart["timestamp"],
                 duration_seconds=abs(event_ts - counterpart["timestamp"]),
+                permit_status=PERMIT_VALID,
             )
             continue
 
@@ -335,6 +350,7 @@ def lambda_handler(event, context):
             counterpart_timestamp=counterpart["timestamp"],
             duration_seconds=abs(event_ts - counterpart["timestamp"]),
             occurrence_key=occurrence_key,
+            permit_status=PERMIT_INVALID,
         )
 
     return {
@@ -497,6 +513,7 @@ def _record_decision(
     counterpart_timestamp=None,
     duration_seconds=None,
     occurrence_key=None,
+    permit_status=None,
 ):
     updates = ["decision_reason = :dr", "decision_lane = :dl", "decision_at = :da"]
     values = {
@@ -504,21 +521,30 @@ def _record_decision(
         ":dl": decision_lane,
         ":da": int(time.time()),
     }
+
     if counterpart_timestamp is not None:
         updates.append("counterpart_timestamp = :ct")
         values[":ct"] = int(counterpart_timestamp)
+
     if duration_seconds is not None:
         updates.append("duration_seconds = :du")
         values[":du"] = int(duration_seconds)
+
     if occurrence_key is not None:
         updates.append("occurrence_key = :ok")
         values[":ok"] = occurrence_key
+
+    # Unified permit status model
+    if permit_status is not None:
+        updates.append("permit_status = :ps")
+        values[":ps"] = str(permit_status).upper()
 
     gate_events_table.update_item(
         Key={"timestamp": int(timestamp), "vehicle_id": ddb_vehicle_id},
         UpdateExpression="SET " + ", ".join(updates),
         ExpressionAttributeValues=values,
     )
+
 
 
 def _occurrence_key(vehicle_id, violation_type, anchor_ts):
