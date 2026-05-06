@@ -1,6 +1,7 @@
 import json
 import os
 import time
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import boto3
@@ -75,6 +76,10 @@ def _create_permit(event):
         return error_response(400, "owner is required")
     if not expiry_date:
         return error_response(400, "expiryDate is required")
+    if _parse_expiry(expiry_date) is None:
+        return error_response(400, "expiryDate must be YYYY-MM-DD or ISO-8601 datetime")
+    if not _is_future_expiry(expiry_date):
+        return error_response(400, "expiryDate must be in the future")
 
     item = {
         "vehicle_id": vehicle_id,
@@ -116,7 +121,7 @@ def _update_permit(event):
     sets = []
 
     if "status" in body:
-        valid_statuses = {"VALID", "EXPIRED", "REVOKED"}
+        valid_statuses = {"VALID", "EXPIRED", "REVOKED", "INVALID"}
         status = body["status"].upper()
         if status not in valid_statuses:
             return error_response(400, f"status must be one of: {', '.join(valid_statuses)}")
@@ -130,8 +135,19 @@ def _update_permit(event):
         values[":ow"] = body["owner"]
 
     if "expiryDate" in body:
+        expiry_date = (body.get("expiryDate") or "").strip()
+        if not expiry_date:
+            return error_response(400, "expiryDate cannot be empty")
+        if _parse_expiry(expiry_date) is None:
+            return error_response(400, "expiryDate must be YYYY-MM-DD or ISO-8601 datetime")
         sets.append("expiry_date = :ed")
-        values[":ed"] = body["expiryDate"]
+        values[":ed"] = expiry_date
+
+        # Auto-sync permit_status from expiry when caller does not set status explicitly.
+        if "status" not in body:
+            sets.append("#ps = :ps")
+            names["#ps"] = "permit_status"
+            values[":ps"] = "VALID" if _is_future_expiry(expiry_date) else "INVALID"
 
     if not sets:
         return error_response(400, "Provide at least one of: status, owner, expiryDate")
@@ -174,6 +190,33 @@ def _json_serialize(o):
     if isinstance(o, Decimal):
         return float(o)
     raise TypeError
+
+
+def _is_future_expiry(expiry_date: str) -> bool:
+    expires_at = _parse_expiry(expiry_date)
+    if expires_at is None:
+        return False
+    return expires_at > datetime.now(timezone.utc)
+
+
+def _parse_expiry(expiry_date: str):
+    raw = str(expiry_date).strip()
+
+    # Common permit format: YYYY-MM-DD (interpreted as end-of-day UTC).
+    try:
+        d = datetime.strptime(raw, "%Y-%m-%d")
+        return d.replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+    except ValueError:
+        pass
+
+    # ISO-8601 datetime support.
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except ValueError:
+        return None
 
 
 def _cors_headers():
