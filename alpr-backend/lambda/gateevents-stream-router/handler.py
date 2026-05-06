@@ -657,7 +657,6 @@ def _permit_decision(lambda_response):
         return "invalid"
     return "unknown"
 
-
 def _normalize_plate(value):
     """Match permit-admin style so permit-checker lookups align with Permits keys."""
     if value is None:
