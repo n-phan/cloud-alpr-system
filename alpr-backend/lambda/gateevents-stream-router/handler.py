@@ -187,7 +187,7 @@ def lambda_handler(event, context):
                 decision_reason="invalid-permit-citation",
                 decision_lane="high-confidence-detection",
                 occurrence_key=occurrence_key,
-                valid_permit=PERMIT_INVALID,
+                permit_status=PERMIT_INVALID,
             )
             continue
 
@@ -209,7 +209,7 @@ def lambda_handler(event, context):
                 timestamp=event_ts,
                 decision_reason="unknown-event-type-review",
                 decision_lane="high-confidence-automated",
-                permit_status="UNKNOWN",
+                permit_status=PERMIT_REVIEW
             )
             continue
 
@@ -253,7 +253,7 @@ def lambda_handler(event, context):
                     timestamp=event_ts,
                     decision_reason="orphan-review",
                     decision_lane="high-confidence-automated",
-                    permit_status="UNKNOWN",
+                    permit_status=PERMIT_REVIEW,
                 )
                 continue
 
@@ -539,11 +539,14 @@ def _record_decision(
         updates.append("permit_status = :ps")
         values[":ps"] = str(permit_status).upper()
 
-    gate_events_table.update_item(
+    response = gate_events_table.update_item(
         Key={"timestamp": int(timestamp), "vehicle_id": ddb_vehicle_id},
         UpdateExpression="SET " + ", ".join(updates),
         ExpressionAttributeValues=values,
     )
+
+    print(response)
+
 
 
 
