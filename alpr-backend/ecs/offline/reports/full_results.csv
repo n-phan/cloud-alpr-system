@@ -1,0 +1,76 @@
+file,test_case,category,expected,predicted_raw,accuracy,precision,recall
+test2-ABC123DE-easy.jpg,test2,easy,ABC123DE,"[{'plate': 'ABC123DE', 'confidence': 0.9572514549047226}]",1,1.0,1.0
+test3-LASTBUG-easy.jpg,test3,easy,LASTBUG,"[{'plate': 'LASTBUG', 'confidence': 0.999901900274138}]",1,1.0,1.0
+test4-LUC803-easy.jpg,test4,easy,LUC803,"[{'plate': 'LUC803', 'confidence': 0.9999172518968539}]",1,1.0,1.0
+test5-HBQ620-easy.jpg,test5,easy,HBQ620,"[{'plate': 'HBQ620', 'confidence': 0.9980080709776157}]",1,1.0,1.0
+test6-S8911B-easy.jpg,test6,easy,S8911B,"[{'plate': 'S8911B', 'confidence': 0.9993796111407411}]",1,1.0,1.0
+test7-MSKSN69-easy.jpg,test7,easy,MSKSN69,"[{'plate': 'MSKSN69', 'confidence': 0.9999609228299486}]",1,1.0,1.0
+test10-8NMT407-easy.jpg,test10,easy,8NMT407,"[{'plate': '8NMT407', 'confidence': 0.9989888505047622}]",1,1.0,1.0
+test12-9KWT416-easy.jpg,test12,easy,9KWT416,"[{'plate': '9KWT416', 'confidence': 0.9998212445304184}]",1,1.0,1.0
+test13-DATAHOG-easy.jpg,test13,easy,DATAHOG,"[{'plate': 'DATAHOG', 'confidence': 0.9930017898898689}]",1,1.0,1.0
+test21-PB4WEGO-easy.jpg,test21,easy,PB4WEGO,"[{'plate': 'PB4WEGO', 'confidence': 0.981903096404773}]",1,1.0,1.0
+test29-28065H4-easy.jpg,test29,easy,28065H4,"[{'plate': '28065H4', 'confidence': 0.9997652588673038}]",1,1.0,1.0
+test30-4ATC967-easy.jpg,test30,easy,4ATC967,"[{'plate': '4ATC967', 'confidence': 0.999535338505625}]",1,1.0,1.0
+test31-8NEM231-easy.jpg,test31,easy,8NEM231,"[{'plate': '8NEM231', 'confidence': 0.975201946713318}]",1,1.0,1.0
+test32-8AXJ417-easy.jpg,test32,easy,8AXJ417,"[{'plate': '8AXJ417', 'confidence': 0.9995631247687768}]",1,1.0,1.0
+test34-IEPS-easy.jpg,test34,easy,IEPS,"[{'plate': 'IEPS', 'confidence': 0.9998510644465244}]",1,1.0,1.0
+test37-HULOVSU-easy.jpg,test37,easy,HULOVSU,"[{'plate': 'HULOVSU', 'confidence': 0.9989346546051532}]",1,1.0,1.0
+test38-BYOLOGY-easy.jpg,test38,easy,BYOLOGY,"[{'plate': 'BYOLOGY', 'confidence': 0.9948569867143224}]",1,1.0,1.0
+test46-765OUZ-easy.jpg,test46,easy,765OUZ,"[{'plate': '765OUZ', 'confidence': 0.9811743028840303}]",1,1.0,1.0
+test47-CTVA66-easy.jpg,test47,easy,CTVA66,"[{'plate': 'CTVA66', 'confidence': 0.9999417620360423}]",1,1.0,1.0
+test48-4XG8879-easy.jpg,test48,easy,4XG8879,"[{'plate': '4XG8879', 'confidence': 0.999923197452229}]",1,1.0,1.0
+test52-YOUTUBE-easy.jpg,test52,easy,YOUTUBE,"[{'plate': 'YOUTUBE', 'confidence': 0.9990098761341831}]",1,1.0,1.0
+test54-SM05DFO-easy.jpg,test54,easy,SM05DFO,"[{'plate': 'B137012', 'confidence': 0.9969955242414947}, {'plate': 'SM05DFO', 'confidence': 0.8769966407441752}]",1,1.0,1.0
+test56-51F15585-easy.jpg,test56,easy,51F15585,"[{'plate': '51F15585', 'confidence': 0.9998650528732466}]",1,1.0,1.0
+test57-60A35981-easy.jpg,test57,easy,60A35981,"[{'plate': '60A35981', 'confidence': 0.9999504368701795}]",1,1.0,1.0
+test1-ABC1234-hard.jpg,test1,hard,ABC1234,"[{'plate': 'ABC1234', 'confidence': 0.9999339623065708}]",1,1.0,1.0
+test18-IMINAYA-hard.jpg,test18,hard,IMINAYA,"[{'plate': 'IMINAYA', 'confidence': 0.9943636866200712}]",1,1.0,1.0
+test19-HUTCHW-hard.jpg,test19,hard,HUTCHW,"[{'plate': 'HUTCHW', 'confidence': 0.9989086769752601}]",1,1.0,1.0
+test20-IEB678-hard.jpg,test20,hard,IEB678,"[{'plate': 'IEB678', 'confidence': 0.9996971580735617}]",1,1.0,1.0
+test24-1216I6W-hard.jpg,test24,hard,1216I6W,"[{'plate': '121616W', 'confidence': 0.7110800935078729}]",0,0.8571428571428571,0.8571428571428571
+test25-BLKSOK1-hard.jpg,test25,hard,BLKSOK1,"[{'plate': 'BLK50X1', 'confidence': 0.9532965651111301}]",0,0.5714285714285714,0.5714285714285714
+test26-OPTAMUZ-hard.jpg,test26,hard,OPTAMUZ,"[{'plate': '02TA0F', 'confidence': 0.5662343848987303}]",0,0.3333333333333333,0.2857142857142857
+test28-28065H4-hard.jpg,test28,hard,28065H4,"[{'plate': '28065H4', 'confidence': 0.9996174422260755}]",1,1.0,1.0
+test40-AG998-hard.jpg,test40,hard,AG998,"[{'plate': 'AG998', 'confidence': 0.9996519850542352}]",1,1.0,1.0
+test42-JETS73-hard.jpg,test42,hard,JETS73,"[{'plate': 'JETS73', 'confidence': 0.9998664938659146}]",1,1.0,1.0
+test45-JBBB81-hard.jpg,test45,hard,JBBB81,"[{'plate': 'JBBB81', 'confidence': 0.9989588025892107}]",1,1.0,1.0
+test50-7JZK433-hard.jpg,test50,hard,7JZK433,"[{'plate': '7JZK433', 'confidence': 0.999909558266171}]",1,1.0,1.0
+test59-KA7436-hard.jpg,test59,hard,KA7436,"[{'plate': 'KA7436', 'confidence': 0.91515477351058}]",1,1.0,1.0
+test61-WDJ36L-hard.jpg,test61,hard,WDJ36L,"[{'plate': 'WDJ36L', 'confidence': 0.9997507014983011}]",1,1.0,1.0
+test62-CLS009-hard.jpg,test62,hard,CLS009,"[{'plate': 'CVB534', 'confidence': 0.9994308004142182}, {'plate': 'CLS009', 'confidence': 0.9990891113740413}]",1,1.0,1.0
+test63-CVB534-hard.jpg,test63,hard,CVB534,"[{'plate': 'CVB534', 'confidence': 0.9994308004142182}, {'plate': 'CLS009', 'confidence': 0.9990891113740413}]",1,1.0,1.0
+test66-34BSS-hard.jpg,test66,hard,34BSS,"[{'plate': '34AS5', 'confidence': 0.8707819379218749}]",0,0.6,0.6
+test68-BATMAN-hard.jpg,test68,hard,BATMAN,"[{'plate': 'BATMAN', 'confidence': 0.9936194526867436}]",1,1.0,1.0
+test69-DA7222-hard.jpg,test69,hard,DA7222,"[{'plate': 'QW7222', 'confidence': 0.9795198564030397}, {'plate': 'DM7222', 'confidence': 0.9539378119587772}]",0,0.8333333333333334,0.8333333333333334
+test71-C0V1D-hard.jpg,test71,hard,C0V1D,"[{'plate': 'COV1D', 'confidence': 0.9237812859048993}]",0,0.8,0.8
+test72-HERLOSS-hard.jpg,test72,hard,HERLOSS,"[{'plate': 'AERLOSS', 'confidence': 0.9082010860945134}]",0,0.8571428571428571,0.8571428571428571
+test8-S5239C-medium.jpg,test8,medium,S5239C,"[{'plate': 'S5239C', 'confidence': 0.9997707172243403}, {'plate': 'LUC803', 'confidence': 0.9996908684171314}, {'plate': 'SUTTCN1', 'confidence': 0.9508591293070517}]",1,1.0,1.0
+test9-1FINEDY-medium.jpg,test9,medium,1FINEDY,"[{'plate': '1FINEDY', 'confidence': 0.9763931955740359}]",1,1.0,1.0
+test11-ELEKTRK-medium.jpg,test11,medium,ELEKTRK,"[{'plate': 'ELEKTRR', 'confidence': 0.9913970407616094}, {'plate': 'SA1202', 'confidence': 0.5248277906312833}]",0,0.8571428571428571,0.8571428571428571
+test14-8C00CHY-medium.jpg,test14,medium,8C00CHY,"[{'plate': '8C00CHY', 'confidence': 0.9873736744053935}]",1,1.0,1.0
+test15-BCK7900-medium.jpg,test15,medium,BCK7900,"[{'plate': 'BCK7900', 'confidence': 0.9998401870277056}]",1,1.0,1.0
+test16-8WXI716-medium.jpg,test16,medium,8WXI716,"[{'plate': '8WX716', 'confidence': 0.9988787333562581}]",0,1.0,0.8571428571428571
+test17-CTX7536-medium.jpg,test17,medium,CTX7536,"[{'plate': 'CTX7536', 'confidence': 0.9997282979459675}]",1,1.0,1.0
+test22-FA1LURE-medium.jpg,test22,medium,FA1LURE,"[{'plate': 'FA1LURE', 'confidence': 0.9954968288394972}]",1,1.0,1.0
+test23-HELLOYOU-medium.jpg,test23,medium,HELLOYOU,"[{'plate': 'HELLOYOU', 'confidence': 0.9730824045032773}]",1,1.0,1.0
+test27-MANUP-medium.jpg,test27,medium,MANUP,"[{'plate': 'MANUP', 'confidence': 0.9817947205923809}]",1,1.0,1.0
+test35-CEARTH1-medium.jpg,test35,medium,CEARTH1,"[{'plate': 'CEARTH1', 'confidence': 0.9995392076661749}]",1,1.0,1.0
+test36-IH8422-medium.jpg,test36,medium,IH8422,"[{'plate': 'IH8422', 'confidence': 0.9994988066728532}]",1,1.0,1.0
+test39-BMW4FL-medium.jpg,test39,medium,BMW4FL,"[{'plate': 'BMW4FL', 'confidence': 0.9999409748423005}]",1,1.0,1.0
+test41-DPV4680-medium.jpg,test41,medium,DPV4680,"[{'plate': 'DPV4680', 'confidence': 0.9997473288484138}]",1,1.0,1.0
+test43-NYP916-medium.jpg,test43,medium,NYP916,"[{'plate': 'NYP916', 'confidence': 0.9999819754301316}]",1,1.0,1.0
+test44-00638-medium.JPG,test44,medium,00638,"[{'plate': '00638', 'confidence': 0.992088804163984}]",1,1.0,1.0
+test49-BETANOT-medium.jpg,test49,medium,BETANOT,"[{'plate': 'BETANOT', 'confidence': 0.8976619422183394}]",1,1.0,1.0
+test51-A697HNB-medium.jpg,test51,medium,A697HNB,"[{'plate': 'A697HNB', 'confidence': 0.9998941907917804}]",1,1.0,1.0
+test53-VANDAMN-medium.jpg,test53,medium,VANDAMN,"[{'plate': 'VANDAMN', 'confidence': 0.9697324366901156}]",1,1.0,1.0
+test55-SM11HTC-medium.jpg,test55,medium,SM11HTC,"[{'plate': 'B137012', 'confidence': 0.9969955242414947}, {'plate': 'SM05DFO', 'confidence': 0.8769966407441752}]",0,0.2857142857142857,0.2857142857142857
+test58-GPG-medium.jpg,test58,medium,GPG,"[{'plate': 'GPGG', 'confidence': 0.9015277663588476}]",0,0.75,1.0
+test60-9-medium.jpg,test60,medium,9,"[{'plate': '9', 'confidence': 0.8799822728372513}, {'plate': 'NOT_FOUND', 'confidence': 0.0}]",1,1.0,1.0
+test64-YJX4976-medium.jpg,test64,medium,YJX4976,"[{'plate': 'YJX4976', 'confidence': 0.9991204273974215}]",1,1.0,1.0
+test65-516AHQ-medium.jpg,test65,medium,516AHQ,"[{'plate': '516AHQ', 'confidence': 0.9948169328418435}, {'plate': 'QR35MM', 'confidence': 0.49911574512274715}]",1,1.0,1.0
+test67-3SAM123-medium.jpg,test67,medium,3SAM123,"[{'plate': '3SAM123', 'confidence': 0.9998001314883715}]",1,1.0,1.0
+test70-RRRRUN-medium.jpg,test70,medium,RRRRUN,"[{'plate': 'RRRRUN', 'confidence': 0.9998866711367288}]",1,1.0,1.0
+test73-ASPACE-medium.jpg,test73,medium,ASPACE,"[{'plate': 'ASPACE', 'confidence': 0.9998829424129212}]",1,1.0,1.0
+test74-UM96201-medium.jpg,test74,medium,UM96201,"[{'plate': 'UM96201', 'confidence': 0.9997814152036618}]",1,1.0,1.0
+test75-YL08WUE-medium.jpg,test75,medium,YL08WUE,"[{'plate': 'YL08WUE', 'confidence': 0.999953936445417}]",1,1.0,1.0
+test76-VY90540-medium.jpg,test76,medium,VY90540,"[{'plate': 'VY90540', 'confidence': 0.9999118925670185}]",1,1.0,1.0

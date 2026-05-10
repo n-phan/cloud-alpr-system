@@ -1,0 +1,4 @@
+category,total,correct,avg_confidence,accuracy_pct
+easy,24,23,0.9946959466860946,95.83
+hard,21,13,0.9433899763972949,61.9
+medium,30,26,0.9844500460161846,86.67

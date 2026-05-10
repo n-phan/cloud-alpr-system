@@ -1,0 +1,4 @@
+category,total,accuracy,avg_precision,avg_recall
+easy,24,100.0,100.0,100.0
+hard,21,66.67,89.77,89.55
+medium,30,86.67,96.31,96.67

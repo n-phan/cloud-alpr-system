@@ -1,0 +1,14 @@
+boto3
+python-dotenv
+
+ultralytics
+
+opencv-python-headless
+numpy
+fast-plate-ocr
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+torchaudio
+fast-plate-ocr[onnx]
