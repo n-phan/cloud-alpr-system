@@ -1,0 +1,5 @@
+.venv
+.env
+.jpg .png .jpeg
+samples/
+reports/

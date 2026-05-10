@@ -1,0 +1,12 @@
+test_case,test_number,category,expected_plate,actual_plate,confidence,pass
+test24,24,hard,1216I6W,NOT_FOUND,,False
+test25,25,hard,BLKSOK1,NOT_FOUND,,False
+test26,26,hard,OPTAMUZ,NOT_FOUND,,False
+test66,66,hard,34BSS,NOT_FOUND,,False
+test69,69,hard,DA7222,NOT_FOUND,,False
+test71,71,hard,C0V1D,NOT_FOUND,,False
+test72,72,hard,HERLOSS,NOT_FOUND,,False
+test11,11,medium,ELEKTRK,NOT_FOUND,,False
+test16,16,medium,8WXI716,NOT_FOUND,,False
+test55,55,medium,SM11HTC,NOT_FOUND,,False
+test58,58,medium,GPG,NOT_FOUND,,False
